@@ -92,34 +92,38 @@ namespace PocDiceTactics
 
         public void ExecuteEnemyTurns()
         {
-            for (int i = _aliveEnemies.Count - 1; i >= 0; i--)
+            EnemyController[] enemies = _aliveEnemies.ToArray();
+            for (int i = enemies.Length - 1; i >= 0; i--)
             {
-                EnemyController enemy = _aliveEnemies[i];
+                EnemyController enemy = enemies[i];
                 if (enemy == null)
                 {
-                    _aliveEnemies.RemoveAt(i);
                     continue;
                 }
 
                 enemy.ExecuteAction(_turnManager.PlayerController.GridPosition);
             }
+
+            _aliveEnemies.RemoveAll(enemy => enemy == null);
         }
 
         public void ExecuteEnemyTelegraphs()
         {
             Vector2Int playerPos = _turnManager.PlayerController.GridPosition;
 
-            for (int i = _aliveEnemies.Count - 1; i >= 0; i--)
+            EnemyController[] enemies = _aliveEnemies.ToArray();
+            for (int i = enemies.Length - 1; i >= 0; i--)
             {
-                EnemyController enemy = _aliveEnemies[i];
+                EnemyController enemy = enemies[i];
                 if (enemy == null)
                 {
-                    _aliveEnemies.RemoveAt(i);
                     continue;
                 }
 
                 enemy.ExecuteTelegraph(playerPos);
             }
+
+            _aliveEnemies.RemoveAll(enemy => enemy == null);
         }
 
         public void NotifyEnemyDead(EnemyController enemy)

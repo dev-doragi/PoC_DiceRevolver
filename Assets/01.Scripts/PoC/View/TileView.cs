@@ -79,6 +79,7 @@ namespace PocDiceTactics
             _isHover = false;
             _isConfirmHover = false;
             _predictedFace = 0;
+            _originLocalPosition = transform.localPosition;
             ConfigureCollider();
             ApplyImmediate();
         }

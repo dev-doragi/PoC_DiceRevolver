@@ -40,6 +40,7 @@ namespace PocDiceTactics
         public GridManager GridManager => _gridManager;
         public PlayerController PlayerController => _playerController;
         public TurnPhase CurrentPhase => _currentPhase;
+        public int RoundIndex => _waveManager != null ? _waveManager.RoundIndex : 0;
 
         protected override void Awake()
         {
@@ -58,6 +59,7 @@ namespace PocDiceTactics
 
             _waveManager.Initialize(this, _gridManager);
             _waveManager.SpawnNextWave();
+            _waveManager.ExecuteEnemyTelegraphs();
 
             SetPhase(TurnPhase.PlayerInput);
             EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
@@ -75,13 +77,13 @@ namespace PocDiceTactics
             SetPhase(TurnPhase.ActionResolve);
             yield return new WaitForSeconds(_phaseIntervalSeconds);
 
-            SetPhase(TurnPhase.EnemyTelegraph);
-            _waveManager.ExecuteEnemyTelegraphs();
-            yield return new WaitForSeconds(_phaseIntervalSeconds);
-
             SetPhase(TurnPhase.EnemyAction);
             EventBus.Instance?.Publish(new EnemyTurnStartedEvent());
             _waveManager.ExecuteEnemyTurns();
+            yield return new WaitForSeconds(_phaseIntervalSeconds);
+
+            SetPhase(TurnPhase.EnemyTelegraph);
+            _waveManager.ExecuteEnemyTelegraphs();
             yield return new WaitForSeconds(_phaseIntervalSeconds);
 
             SetPhase(TurnPhase.Cleanup);

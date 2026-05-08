@@ -40,7 +40,7 @@ namespace PocDiceTactics
         {
             _turnManager = turnManager;
             _gridManager = gridManager;
-            
+
             PublishStateSnapshot(); // 초기 상태 전달
         }
 
@@ -78,13 +78,16 @@ namespace PocDiceTactics
                 // Dry Fire
                 EventBus.Instance?.Publish(new CylinderDryFiredEvent { ChamberIndex = _firePointer });
             }
+
+            RotateCylinder();
             PublishStateSnapshot(); // 행동 완료 후 스냅샷 전달
         }
 
         private void RotateCylinder()
         {
-            _firePointer = (_firePointer + 1) % _chambers.Length;
-            _loadPointer = (_loadPointer + 1) % _chambers.Length;
+            _firePointer = (_firePointer - 1 + _chambers.Length) % _chambers.Length;
+            _loadPointer = (_firePointer + 4) % _chambers.Length;
+
             EventBus.Instance?.Publish(new CylinderRotatedEvent { NewFirePointer = _firePointer, NewLoadPointer = _loadPointer });
         }
 
@@ -97,8 +100,10 @@ namespace PocDiceTactics
                     FireNormal(origin, direction);
                     break;
                 case 3:
-                case 4:
                     FireMagnum(origin, direction);
+                    break;
+                case 4:
+                    FireRicochet(origin, direction);
                     break;
                 case 5:
                     FireShackle(origin, direction);
@@ -111,13 +116,13 @@ namespace PocDiceTactics
 
         private void FireNormal(Vector2Int origin, Vector2Int direction)
         {
-            EnemyController enemy = GetFirstEnemyInLine(origin, direction, 1);
+            EnemyController enemy = GetFirstEnemyInLine(origin, direction);
             if (enemy != null) enemy.TakeDamage(_normalDamage);
         }
 
         private void FireKnockback(Vector2Int origin, Vector2Int direction)
         {
-            EnemyController enemy = GetFirstEnemyInLine(origin, direction, 1);
+            EnemyController enemy = GetFirstEnemyInLine(origin, direction);
             if (enemy == null) return;
 
             enemy.TakeDamage(_knockbackDamage);
@@ -139,37 +144,74 @@ namespace PocDiceTactics
 
         private void FireRicochet(Vector2Int origin, Vector2Int direction)
         {
-            Vector2Int current = origin;
-            Vector2Int rayDir = direction;
+            if (_gridManager == null || direction == Vector2Int.zero)
+            {
+                return;
+            }
+
+            Vector2Int currentOrigin = origin;
+            Vector2Int rayDelta = direction;
             int bounceCount = 0;
 
             while (true)
             {
-                Vector2Int next = current + rayDir;
-                if (!_gridManager.IsInside(next)) break;
-
-                if (_gridManager.IsWall(next))
+                bool advanced = false;
+                foreach (Vector2Int cell in _gridManager.GetBresenhamLine(currentOrigin, rayDelta))
                 {
-                    bounceCount++;
-                    if (bounceCount > 1) break;
+                    if (!_gridManager.IsInside(cell))
+                    {
+                        return;
+                    }
 
-                    rayDir = new Vector2Int(-rayDir.x, -rayDir.y);
-                    continue;
+                    if (_gridManager.IsWall(cell))
+                    {
+                        bounceCount++;
+                        if (bounceCount > 1)
+                        {
+                            return;
+                        }
+
+                        Vector2Int step = cell - currentOrigin;
+                        Vector2Int reflectedStep = ReflectRicochetStep(currentOrigin, step);
+                        if (reflectedStep == Vector2Int.zero)
+                        {
+                            return;
+                        }
+
+                        int remainingX = rayDelta.x - step.x;
+                        int remainingY = rayDelta.y - step.y;
+                        rayDelta = new Vector2Int(reflectedStep.x + remainingX, reflectedStep.y + remainingY);
+                        currentOrigin = cell;
+                        advanced = true;
+                        break;
+                    }
+
+                    EnemyController enemy = _gridManager.GetOccupant(cell) as EnemyController;
+                    if (enemy != null)
+                    {
+                        enemy.TakeDamage(_ricochetDamage);
+                        return;
+                    }
+
+                    currentOrigin = cell;
+                    advanced = true;
                 }
 
-                current = next;
-                EnemyController enemy = _gridManager.GetOccupant(current) as EnemyController;
-                if (enemy != null)
+                if (!advanced)
                 {
-                    enemy.TakeDamage(_ricochetDamage);
-                    break;
+                    return;
+                }
+
+                if (rayDelta == Vector2Int.zero)
+                {
+                    return;
                 }
             }
         }
 
         private void FireShackle(Vector2Int origin, Vector2Int direction)
         {
-            EnemyController enemy = GetFirstEnemyInLine(origin, direction, 1);
+            EnemyController enemy = GetFirstEnemyInLine(origin, direction);
             if (enemy == null) return;
 
             enemy.TakeDamage(_shackleDamage);
@@ -178,21 +220,23 @@ namespace PocDiceTactics
 
         private void FireMagnum(Vector2Int origin, Vector2Int direction)
         {
-            EnemyController enemy = GetFirstEnemyInLine(origin, direction, 1);
+            EnemyController enemy = GetFirstEnemyInLine(origin, direction);
             if (enemy != null) enemy.TakeDamage(_magnumDamage);
         }
 
-        private EnemyController GetFirstEnemyInLine(Vector2Int origin, Vector2Int direction, int maxDistance)
+        private EnemyController GetFirstEnemyInLine(Vector2Int origin, Vector2Int direction)
         {
-            Vector2Int current = origin;
-
-            for (int i = 0; i < maxDistance; i++)
+            if (_gridManager == null || direction == Vector2Int.zero)
             {
-                current += direction;
-                if (!_gridManager.IsInside(current)) return null;
-                if (_gridManager.IsWall(current)) return null;
+                return null;
+            }
 
-                EnemyController enemy = _gridManager.GetOccupant(current) as EnemyController;
+            foreach (Vector2Int cell in _gridManager.GetBresenhamLine(origin, direction))
+            {
+                if (!_gridManager.IsInside(cell)) return null;
+                if (_gridManager.IsWall(cell)) return null;
+
+                EnemyController enemy = _gridManager.GetOccupant(cell) as EnemyController;
                 if (enemy != null) return enemy;
             }
 
@@ -202,19 +246,58 @@ namespace PocDiceTactics
         private List<EnemyController> GetEnemiesInLine(Vector2Int origin, Vector2Int direction)
         {
             List<EnemyController> result = new List<EnemyController>();
-            Vector2Int current = origin;
-
-            while (true)
+            if (_gridManager == null || direction == Vector2Int.zero)
             {
-                current += direction;
-                if (!_gridManager.IsInside(current)) break;
-                if (_gridManager.IsWall(current)) break;
+                return result;
+            }
 
-                EnemyController enemy = _gridManager.GetOccupant(current) as EnemyController;
+            foreach (Vector2Int cell in _gridManager.GetBresenhamLine(origin, direction))
+            {
+                if (!_gridManager.IsInside(cell)) break;
+                if (_gridManager.IsWall(cell)) break;
+
+                EnemyController enemy = _gridManager.GetOccupant(cell) as EnemyController;
                 if (enemy != null) result.Add(enemy);
             }
 
             return result;
+        }
+
+        private Vector2Int ReflectRicochetStep(Vector2Int origin, Vector2Int step)
+        {
+            int sx = step.x == 0 ? 0 : (step.x > 0 ? 1 : -1);
+            int sy = step.y == 0 ? 0 : (step.y > 0 ? 1 : -1);
+
+            if (sx == 0 && sy == 0)
+            {
+                return Vector2Int.zero;
+            }
+
+            bool hitX = false;
+            bool hitY = false;
+
+            if (sx != 0)
+            {
+                Vector2Int cellX = origin + new Vector2Int(sx, 0);
+                hitX = !_gridManager.IsInside(cellX) || _gridManager.IsWall(cellX);
+            }
+
+            if (sy != 0)
+            {
+                Vector2Int cellY = origin + new Vector2Int(0, sy);
+                hitY = !_gridManager.IsInside(cellY) || _gridManager.IsWall(cellY);
+            }
+
+            if (hitX) sx = -sx;
+            if (hitY) sy = -sy;
+
+            if (!hitX && !hitY)
+            {
+                sx = -sx;
+                sy = -sy;
+            }
+
+            return new Vector2Int(sx, sy);
         }
 
         private void PublishStateSnapshot()

@@ -392,6 +392,7 @@ GameObject:
   - component: {fileID: 307851768}
   - component: {fileID: 307851770}
   - component: {fileID: 307851769}
+  - component: {fileID: 307851771}
   m_Layer: 5
   m_Name: Cylinder
   m_TagString: Untagged
@@ -438,7 +439,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -462,6 +463,36 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 307851767}
   m_CullTransparentMesh: 1
+--- !u!114 &307851771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 307851767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b3c267523f2e474daa7da3f7ec3800b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.CylinderPanelUI
+  _cylinderWheel: {fileID: 307851768}
+  _slotAnchors:
+  - {fileID: 489488882}
+  - {fileID: 419044829}
+  - {fileID: 632728611}
+  - {fileID: 448495456}
+  - {fileID: 1573896985}
+  - {fileID: 2084578985}
+  _bulletDataConfigs:
+  - {fileID: 11400000, guid: d3a2f80010f6a46468efce69528e405d, type: 2}
+  - {fileID: 11400000, guid: 53ab9fe001bf40d46bc794f497a277bb, type: 2}
+  - {fileID: 11400000, guid: 7154bc3dcb847554cbd2264fd4a5ba4c, type: 2}
+  - {fileID: 11400000, guid: 2bf5e3b83517e1844a59a683d5f5ce02, type: 2}
+  - {fileID: 11400000, guid: 40ebfbea57bbb7f4ea5491152aea12b1, type: 2}
+  - {fileID: 11400000, guid: 78a46f454f5c6d749b9fa050719662e1, type: 2}
+  _bulletUIPrefab: {fileID: 3693038933114912621, guid: 4f80a491fabaccb4bb36deb2255c89b4, type: 3}
+  _bulletPrefabKey: Bullet
+  _rotationDuration: 0.3
 --- !u!1 &357625837
 GameObject:
   m_ObjectHideFlags: 0
@@ -472,6 +503,7 @@ GameObject:
   m_Component:
   - component: {fileID: 357625839}
   - component: {fileID: 357625838}
+  - component: {fileID: 357625840}
   m_Layer: 0
   m_Name: GridViewManager
   m_TagString: Untagged
@@ -496,6 +528,11 @@ MonoBehaviour:
   _tileRoot: {fileID: 1172459050}
   _tileOffset: {x: 0, y: 0, z: 0}
   _shotStepInterval: 0.035
+  _laserLine: {fileID: 357625840}
+  _laserTravelSpeed: 24
+  _laserFadeDuration: 0.12
+  _laserMinWidth: 0.03
+  _laserMaxWidth: 0.1
 --- !u!4 &357625839
 Transform:
   m_ObjectHideFlags: 0
@@ -511,6 +548,116 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!120 &357625840
+LineRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357625837}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 0
+  m_LightProbeUsage: 0
+  m_ReflectionProbeUsage: 0
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 50
+  m_MaskInteraction: 0
+  m_Positions:
+  - {x: 0, y: 0, z: 0}
+  - {x: 0, y: 0, z: 1}
+  m_Parameters:
+    serializedVersion: 3
+    widthMultiplier: 1
+    widthCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0.07691483
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    colorGradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 0}
+      key2: {r: 1, g: 0.08962262, b: 0.08962262, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 65535
+      ctime3: 48188
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 65535
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: 0
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    numCornerVertices: 0
+    numCapVertices: 0
+    alignment: 0
+    textureMode: 0
+    textureScale: {x: 1, y: 1}
+    shadowBias: 0.5
+    generateLightingData: 0
+  m_UseWorldSpace: 1
+  m_Loop: 0
+  m_ApplyActiveColorSpace: 1
 --- !u!1 &419044828
 GameObject:
   m_ObjectHideFlags: 0
@@ -944,6 +1091,7 @@ MonoBehaviour:
   _zoomStep: 2
   _minZoom: 3
   _maxZoom: 15
+  _zoomFitPadding: 1.1
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1344,7 +1492,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.37375498, g: 1, b: 0, a: 0.42745098}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -1429,7 +1577,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 17.777779, y: 10}
+  m_Size: {x: 20, y: 11.25}
   m_EdgeRadius: 0
 --- !u!4 &807423923
 Transform:
@@ -1480,7 +1628,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 123.8}
+  m_AnchoredPosition: {x: 0, y: 123.79999}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &850396117
@@ -1497,7 +1645,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.27952042, b: 0, a: 0.42745098}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -1868,7 +2016,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cad6361ea34b15840a3df9af1e88e27c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.WaveManager
-  _isDontDestroyOnLoad: 1
+  _isDontDestroyOnLoad: 0
   _enemyPrefab: {fileID: 4983442012776696302, guid: 6cc4110fdbaf4e945b9f7dabadc6b77b, type: 3}
   _enemiesPerWave: 3
 --- !u!4 &966860151
@@ -1915,7 +2063,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 200dbaa48a7e2d34f926ee25bdfb4d6b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.CylinderSystem
-  _isDontDestroyOnLoad: 1
+  _isDontDestroyOnLoad: 0
   _normalDamage: 1
   _knockbackDamage: 1
   _wallCollisionDamage: 1
@@ -2072,6 +2220,10 @@ PrefabInstance:
     - target: {fileID: 5926058635058926176, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7332093343675951096, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
+      propertyPath: m_text
+      value: GAME OVER
       objectReference: {fileID: 0}
     - target: {fileID: 7813517234493549289, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
       propertyPath: m_Pivot.x
@@ -2263,8 +2415,13 @@ MonoBehaviour:
   _tileLayerMask:
     serializedVersion: 2
     m_Bits: 64
-  _deathFadeRenderers: []
+  _deathFadeRenderers:
+  - {fileID: 481015124}
   _deathEffectDuration: 0.35
+  _bumpDistance: 0.18
+  _bumpDuration: 0.14
+  _recoilDistance: 0.14
+  _recoilDuration: 0.12
 --- !u!1001 &1680415440
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2508,7 +2665,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.GridManager
   _isDontDestroyOnLoad: 1
-  _gridSize: {x: 5, y: 5}
+  _gridSize: {x: 10, y: 10}
   _cellSize: 1
   _worldOrigin: {x: 0, y: 0}
   _wallCount: 4
@@ -2540,7 +2697,6 @@ GameObject:
   - component: {fileID: 1978059066}
   - component: {fileID: 1978059068}
   - component: {fileID: 1978059067}
-  - component: {fileID: 1978059069}
   m_Layer: 5
   m_Name: CylinderPanel
   m_TagString: Untagged
@@ -2584,7 +2740,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -2608,36 +2764,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1978059065}
   m_CullTransparentMesh: 1
---- !u!114 &1978059069
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1978059065}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b3c267523f2e474daa7da3f7ec3800b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.CylinderPanelUI
-  _cylinderWheel: {fileID: 307851768}
-  _slotAnchors:
-  - {fileID: 489488882}
-  - {fileID: 419044829}
-  - {fileID: 632728611}
-  - {fileID: 448495456}
-  - {fileID: 1573896985}
-  - {fileID: 2084578985}
-  _bulletDataConfigs:
-  - {fileID: 11400000, guid: d3a2f80010f6a46468efce69528e405d, type: 2}
-  - {fileID: 11400000, guid: 53ab9fe001bf40d46bc794f497a277bb, type: 2}
-  - {fileID: 11400000, guid: 7154bc3dcb847554cbd2264fd4a5ba4c, type: 2}
-  - {fileID: 11400000, guid: 2bf5e3b83517e1844a59a683d5f5ce02, type: 2}
-  - {fileID: 11400000, guid: 40ebfbea57bbb7f4ea5491152aea12b1, type: 2}
-  - {fileID: 11400000, guid: 78a46f454f5c6d749b9fa050719662e1, type: 2}
-  _bulletUIPrefab: {fileID: 3693038933114912621, guid: 4f80a491fabaccb4bb36deb2255c89b4, type: 3}
-  _bulletPrefabKey: Bullet
-  _rotationDuration: 0.3
 --- !u!1001 &1984302995
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3389,6 +3515,10 @@ PrefabInstance:
       value: InputReader
       objectReference: {fileID: 0}
     - target: {fileID: 5043326435245214853, guid: 3dfa3598a0e8a3d40b24b33cbe7e2402, type: 3}
+      propertyPath: m_DefaultActionMap
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 5043326435245214853, guid: 3dfa3598a0e8a3d40b24b33cbe7e2402, type: 3}
       propertyPath: m_NotificationBehavior
       value: 3
       objectReference: {fileID: 0}
@@ -3553,6 +3683,18 @@ PrefabInstance:
     - target: {fileID: 6833040098217192916, guid: 9e0ad0f1b9a1f3f4cb25735d377f3db2, type: 3}
       propertyPath: _globalPools.Array.size
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6833040098217192916, guid: 9e0ad0f1b9a1f3f4cb25735d377f3db2, type: 3}
+      propertyPath: _globalPools.Array.data[0].Prefab
+      value: 
+      objectReference: {fileID: 3693038933114912621, guid: 4f80a491fabaccb4bb36deb2255c89b4, type: 3}
+    - target: {fileID: 6833040098217192916, guid: 9e0ad0f1b9a1f3f4cb25735d377f3db2, type: 3}
+      propertyPath: _globalPools.Array.data[0].MaxSize
+      value: 36
+      objectReference: {fileID: 0}
+    - target: {fileID: 6833040098217192916, guid: 9e0ad0f1b9a1f3f4cb25735d377f3db2, type: 3}
+      propertyPath: _globalPools.Array.data[0].InitialSize
+      value: 36
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

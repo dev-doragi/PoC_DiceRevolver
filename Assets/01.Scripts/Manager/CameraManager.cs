@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using PocDiceTactics;
 
 [RequireComponent(typeof(Camera))]
 [DefaultExecutionOrder(-110)]
@@ -15,6 +16,7 @@ public class CameraManager : Singleton<CameraManager>
     [SerializeField] private float _zoomStep = 2f;
     [SerializeField] private float _minZoom = 3f;
     [SerializeField] private float _maxZoom = 15f;
+    [SerializeField] private float _zoomFitPadding = 1.1f;
 
     private Camera _mainCamera;
     private Vector3 _originalPos;
@@ -22,6 +24,8 @@ public class CameraManager : Singleton<CameraManager>
 
     private float _targetZoom;
     private float _initialZoom;
+    private float _runtimeMinZoom;
+    private float _runtimeMaxZoom;
     private bool _isDragging;
     private bool _tutorialCameraEventPublished;
 
@@ -59,16 +63,20 @@ public class CameraManager : Singleton<CameraManager>
 
         _initialZoom = _mainCamera.orthographicSize;
         _targetZoom = _initialZoom;
+        _runtimeMinZoom = _minZoom;
+        _runtimeMaxZoom = _maxZoom;
     }
 
     protected override void OnBootstrap()
     {
         transform.position = ClampCameraPosition(transform.position, _mainCamera.orthographicSize);
+        RefreshZoomLimitsByGrid();
 
         if (EventBus.Instance != null)
         {
             EventBus.Instance.Subscribe<RightClickEvent>(HandleRightClick);
             EventBus.Instance.Subscribe<ScrollEvent>(HandleScroll);
+            EventBus.Instance.Subscribe<RoundStartedEvent>(HandleRoundStarted);
         }
     }
 
@@ -78,6 +86,7 @@ public class CameraManager : Singleton<CameraManager>
 
         EventBus.Instance.Unsubscribe<RightClickEvent>(HandleRightClick);
         EventBus.Instance.Unsubscribe<ScrollEvent>(HandleScroll);
+        EventBus.Instance.Unsubscribe<RoundStartedEvent>(HandleRoundStarted);
     }
 
     private void Update()
@@ -100,7 +109,7 @@ public class CameraManager : Singleton<CameraManager>
     private void HandlePanning()
     {
         if (!_isDragging || InputReader.Instance == null) return;
-        if (Mathf.Abs(_mainCamera.orthographicSize - _maxZoom) < 0.001f) return;
+        if (Mathf.Abs(_mainCamera.orthographicSize - _runtimeMaxZoom) < 0.001f) return;
 
         Vector2 mouseDelta = InputReader.Instance.GetMouseDelta();
         if (mouseDelta.sqrMagnitude <= 0.01f) return;
@@ -151,7 +160,7 @@ public class CameraManager : Singleton<CameraManager>
         if (isCrossingInitial && !isAlreadyAtInitial)
             _targetZoom = _initialZoom;
         else
-            _targetZoom = Mathf.Clamp(nextZoom, _minZoom, _maxZoom);
+            _targetZoom = Mathf.Clamp(nextZoom, _runtimeMinZoom, _runtimeMaxZoom);
 
         ApplyZoomAtMousePosition(_targetZoom);
     }
@@ -162,6 +171,64 @@ public class CameraManager : Singleton<CameraManager>
 
         _tutorialCameraEventPublished = true;
         EventBus.Instance?.Publish(new CameraManipulationEvent());
+    }
+
+    private void HandleRoundStarted(RoundStartedEvent _)
+    {
+        RefreshZoomLimitsByGrid();
+    }
+
+    private void RefreshZoomLimitsByGrid()
+    {
+        GridManager gridManager = GridManager.Instance;
+        if (gridManager == null || _mainCamera == null)
+        {
+            _runtimeMinZoom = _minZoom;
+            _runtimeMaxZoom = _maxZoom;
+            return;
+        }
+
+        Vector2Int size = gridManager.GridSize;
+        if (size.x <= 0 || size.y <= 0)
+        {
+            _runtimeMinZoom = _minZoom;
+            _runtimeMaxZoom = _maxZoom;
+            return;
+        }
+
+        float stepX = 1f;
+        float stepY = 1f;
+
+        if (size.x > 1)
+        {
+            stepX = Mathf.Abs((gridManager.CellToWorld(new Vector2Int(1, 0)) - gridManager.CellToWorld(Vector2Int.zero)).x);
+        }
+        else if (size.y > 1)
+        {
+            stepX = Mathf.Abs((gridManager.CellToWorld(new Vector2Int(0, 1)) - gridManager.CellToWorld(Vector2Int.zero)).y);
+        }
+
+        if (size.y > 1)
+        {
+            stepY = Mathf.Abs((gridManager.CellToWorld(new Vector2Int(0, 1)) - gridManager.CellToWorld(Vector2Int.zero)).y);
+        }
+        else
+        {
+            stepY = stepX;
+        }
+
+        float gridWorldWidth = Mathf.Max(stepX, size.x * stepX);
+        float gridWorldHeight = Mathf.Max(stepY, size.y * stepY);
+        float fitHeight = gridWorldHeight * 0.5f;
+        float fitWidth = gridWorldWidth * 0.5f / Mathf.Max(0.0001f, _mainCamera.aspect);
+        float fitZoom = Mathf.Max(fitHeight, fitWidth) * Mathf.Max(1f, _zoomFitPadding);
+
+        _runtimeMinZoom = Mathf.Max(_minZoom, fitZoom * 0.35f);
+        _runtimeMaxZoom = Mathf.Max(_maxZoom, fitZoom * 1.15f, _runtimeMinZoom + 0.5f);
+
+        _targetZoom = Mathf.Clamp(_targetZoom, _runtimeMinZoom, _runtimeMaxZoom);
+        _mainCamera.orthographicSize = Mathf.Clamp(_mainCamera.orthographicSize, _runtimeMinZoom, _runtimeMaxZoom);
+        transform.position = ClampCameraPosition(transform.position, _mainCamera.orthographicSize);
     }
 
     private void ApplyZoomAtMousePosition(float newZoom)

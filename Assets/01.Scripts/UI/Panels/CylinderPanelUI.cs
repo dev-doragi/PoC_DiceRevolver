@@ -34,7 +34,7 @@ namespace PocDiceTactics
         private void OnDisable()
         {
             EventBus.Instance?.Unsubscribe<CylinderStateChangedEvent>(RefreshUI);
-            _cylinderWheel.DOKill();
+            _cylinderWheel?.DOKill();
         }
 
         private void RefreshUI(CylinderStateChangedEvent evt)
@@ -75,7 +75,11 @@ namespace PocDiceTactics
 
         private void RotateWheelToFirePointer(int currentFirePointer)
         {
-            if (_cylinderWheel == null) return;
+            if (_cylinderWheel == null)
+            {
+                Debug.LogError("[CylinderPanelUI] _cylinderWheel is not assigned.");
+                return;
+            }
 
             // 최초 갱신 시에는 애니메이션 없이 즉시 각도 적용
             if (_lastFirePointer == -1)
@@ -88,11 +92,8 @@ namespace PocDiceTactics
 
             if (_lastFirePointer == currentFirePointer) return;
 
-            // 현재 각도에서 Z축으로 -60도 회전
-            Vector3 currentRotation = _cylinderWheel.localEulerAngles;
-            float targetZ = currentRotation.z - 60f;
-
-            _cylinderWheel.DORotate(new Vector3(0, 0, targetZ), _rotationDuration, RotateMode.FastBeyond360)
+            _cylinderWheel.DOKill(true);
+            _cylinderWheel.DOLocalRotate(new Vector3(0f, 0f, -60f), _rotationDuration, RotateMode.LocalAxisAdd)
                 .SetEase(Ease.OutBack);
 
             _lastFirePointer = currentFirePointer;

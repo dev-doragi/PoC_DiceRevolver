@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
+using DG.Tweening;
 
 namespace PocDiceTactics
 {
@@ -14,6 +15,10 @@ namespace PocDiceTactics
         [SerializeField] private LayerMask _tileLayerMask = ~0;
         [SerializeField] private SpriteRenderer[] _deathFadeRenderers;
         [SerializeField] private float _deathEffectDuration = 0.35f;
+        [SerializeField] private float _bumpDistance = 0.18f;
+        [SerializeField] private float _bumpDuration = 0.14f;
+        [SerializeField] private float _recoilDistance = 0.14f;
+        [SerializeField] private float _recoilDuration = 0.12f;
 
         private TurnManager _turnManager;
         private GridManager _gridManager;
@@ -237,7 +242,11 @@ namespace PocDiceTactics
         private void TryMove(Vector2Int direction)
         {
             Vector2Int nextCell = _gridPosition + direction;
-            if (!_gridManager.TryMoveOccupant(_gridPosition, nextCell, this)) return;
+            if (!_gridManager.TryMoveOccupant(_gridPosition, nextCell, this))
+            {
+                PlayBump(direction);
+                return;
+            }
 
             _gridPosition = nextCell;
             _facing = direction;
@@ -342,6 +351,7 @@ namespace PocDiceTactics
             if (_cylinderSystem != null)
             {
                 _cylinderSystem.Fire(_gridPosition, _facing);
+                PlayRecoil(_facing);
                 _turnManager.EndPlayerTurn();
             }
         }
@@ -377,19 +387,42 @@ namespace PocDiceTactics
             Vector2Int delta = targetCell - _gridPosition;
             if (delta == Vector2Int.zero) return;
 
-            Vector2Int fireDirection;
-            if (Mathf.Abs(delta.x) >= Mathf.Abs(delta.y))
+            _facing = delta;
+            _cylinderSystem.Fire(_gridPosition, delta);
+            PlayRecoil(delta);
+            _turnManager.EndPlayerTurn();
+        }
+
+        private void PlayBump(Vector2Int direction)
+        {
+            transform.DOKill();
+
+            Vector3 punch = new Vector3(direction.x, direction.y, 0f) * _bumpDistance;
+            transform.DOPunchPosition(punch, _bumpDuration, 1, 0f)
+                .SetEase(Ease.OutQuad);
+        }
+
+        private void PlayRecoil(Vector2Int fireDirection)
+        {
+            transform.DOKill();
+
+            Vector2 recoilDirection = new Vector2(-fireDirection.x, -fireDirection.y);
+            if (recoilDirection.sqrMagnitude < 0.0001f)
             {
-                fireDirection = new Vector2Int(delta.x > 0 ? 1 : -1, 0);
-            }
-            else
-            {
-                fireDirection = new Vector2Int(0, delta.y > 0 ? 1 : -1);
+                return;
             }
 
-            _facing = fireDirection;
-            _cylinderSystem.Fire(_gridPosition, fireDirection);
-            _turnManager.EndPlayerTurn();
+            recoilDirection.Normalize();
+            Vector3 recoilOffset = new Vector3(recoilDirection.x, recoilDirection.y, 0f) * _recoilDistance;
+            Vector3 origin = _moveTargetWorld;
+
+            transform.DOMove(origin + recoilOffset, _recoilDuration * 0.5f)
+                .SetEase(Ease.OutQuad)
+                .OnComplete(() =>
+                {
+                    transform.DOMove(origin, _recoilDuration * 0.5f)
+                        .SetEase(Ease.InQuad);
+                });
         }
 
         private void OnPlayerDied(PlayerDiedEvent e)

@@ -261,18 +261,62 @@ namespace PocDiceTactics
             return actor;
         }
 
+        public IEnumerable<Vector2Int> GetBresenhamLine(Vector2Int origin, Vector2Int delta, int maxDistance = 100)
+        {
+            if (delta == Vector2Int.zero || maxDistance <= 0)
+            {
+                yield break;
+            }
+
+            int x0 = origin.x;
+            int y0 = origin.y;
+            int x1 = origin.x + delta.x;
+            int y1 = origin.y + delta.y;
+
+            int dx = Mathf.Abs(x1 - x0);
+            int dy = Mathf.Abs(y1 - y0);
+            int sx = x0 < x1 ? 1 : -1;
+            int sy = y0 < y1 ? 1 : -1;
+            int err = dx - dy;
+
+            int stepCount = 0;
+            while (stepCount < maxDistance)
+            {
+                int e2 = err * 2;
+
+                if (e2 > -dy)
+                {
+                    err -= dy;
+                    x0 += sx;
+                }
+
+                if (e2 < dx)
+                {
+                    err += dx;
+                    y0 += sy;
+                }
+
+                stepCount++;
+                yield return new Vector2Int(x0, y0);
+            }
+        }
+
         public Vector3 CellToWorld(Vector2Int cell)
         {
-            float x = _worldOrigin.x + (cell.x * _cellSize);
-            float y = _worldOrigin.y + (cell.y * _cellSize);
+            float centerOffsetX = (_gridSize.x - 1) * 0.5f;
+            float centerOffsetY = (_gridSize.y - 1) * 0.5f;
+            float x = _worldOrigin.x + ((cell.x - centerOffsetX) * _cellSize);
+            float y = _worldOrigin.y + ((cell.y - centerOffsetY) * _cellSize);
             return new Vector3(x, y, 0f);
         }
 
         public Vector2Int WorldToCell(Vector3 worldPosition)
         {
             float safeCellSize = Mathf.Max(0.0001f, _cellSize);
-            int x = Mathf.RoundToInt((worldPosition.x - _worldOrigin.x) / safeCellSize);
-            int y = Mathf.RoundToInt((worldPosition.y - _worldOrigin.y) / safeCellSize);
+            float centerOffsetX = (_gridSize.x - 1) * 0.5f;
+            float centerOffsetY = (_gridSize.y - 1) * 0.5f;
+            int x = Mathf.RoundToInt(((worldPosition.x - _worldOrigin.x) / safeCellSize) + centerOffsetX);
+            int y = Mathf.RoundToInt(((worldPosition.y - _worldOrigin.y) / safeCellSize) + centerOffsetY);
             return new Vector2Int(x, y);
         }
     }

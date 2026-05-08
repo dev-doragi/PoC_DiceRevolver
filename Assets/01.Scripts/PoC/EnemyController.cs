@@ -42,6 +42,7 @@ namespace PocDiceTactics
         {
             if (_shackleRemainingTurns > 0)
             {
+                ClearTelegraphIfNeeded();
                 _hasTelegraph = false;
                 return;
             }
@@ -60,6 +61,7 @@ namespace PocDiceTactics
                 return;
             }
 
+            ClearTelegraphIfNeeded();
             _hasTelegraph = false;
         }
 
@@ -68,6 +70,7 @@ namespace PocDiceTactics
             if (_shackleRemainingTurns > 0)
             {
                 _shackleRemainingTurns--;
+                ClearTelegraphIfNeeded();
                 _hasTelegraph = false;
                 return;
             }
@@ -139,6 +142,7 @@ namespace PocDiceTactics
 
         public void ApplyShackle(int turns)
         {
+            ClearTelegraphIfNeeded();
             _shackleRemainingTurns = Mathf.Max(_shackleRemainingTurns, turns);
         }
 
@@ -157,10 +161,26 @@ namespace PocDiceTactics
 
         private void Die()
         {
+            ClearTelegraphIfNeeded();
             _gridManager.UnregisterOccupant(_gridPosition, this);
             _waveManager.NotifyEnemyDead(this);
             EventBus.Instance?.Publish(new EnemyDiedEvent { EnemyPosition = _gridPosition });
             Destroy(gameObject);
+        }
+
+        private void ClearTelegraphIfNeeded()
+        {
+            if (!_hasTelegraph)
+            {
+                return;
+            }
+
+            EventBus.Instance?.Publish(new EnemyTelegraphEvent
+            {
+                EnemyPosition = _gridPosition,
+                TargetCell = _telegraphTargetCell,
+                IsActive = false
+            });
         }
     }
 }
