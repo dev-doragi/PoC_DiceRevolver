@@ -2970,7 +2970,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.GameModeManager
   _isDontDestroyOnLoad: 1
-  _currentMode: 3
+  _currentMode: 0
 --- !u!4 &1706314262
 Transform:
   m_ObjectHideFlags: 0

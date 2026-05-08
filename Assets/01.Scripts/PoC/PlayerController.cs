@@ -50,7 +50,7 @@ namespace PocDiceTactics
         private Coroutine _gatlingRoutine;
         private int _currentHp;
         public int CurrentAP { get; private set; }
-        public int CurrentHP { get; private set; }
+        public int CurrentHP => _currentHp;
 
         public Vector2Int GridPosition => _gridPosition;
         public Vector2Int Facing => _facing;
@@ -113,7 +113,7 @@ namespace PocDiceTactics
             _moveTargetWorld = _gridManager.CellToWorld(_gridPosition);
             transform.position = _moveTargetWorld;
             _isDead = false;
-            CurrentHP = _maxHp;
+            _currentHp = _maxHp;
             CurrentAP = 2;
             EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
             EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = 0, RemainingHp = _currentHp });
@@ -700,11 +700,15 @@ namespace PocDiceTactics
             }
 
             _currentHp -= damage;
+            if (_currentHp <= 0)
+            {
+                _currentHp = 0;
+            }
+
             EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = damage, RemainingHp = _currentHp });
 
             if (_currentHp <= 0)
             {
-                _currentHp = 0;
                 _isDead = true;
                 EventBus.Instance?.Publish(new PlayerDiedEvent { Position = _gridPosition });
                 EventBus.Instance?.Publish(new GameOverEvent());
