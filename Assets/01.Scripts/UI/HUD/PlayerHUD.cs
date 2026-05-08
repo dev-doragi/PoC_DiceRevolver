@@ -18,8 +18,14 @@ namespace PocDiceTactics
             EventBus.Instance.Subscribe<PlayerAPChangedEvent>(OnAPChanged);
             EventBus.Instance.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
             EventBus.Instance.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
+        }
 
-            UpdateHPText();
+        private void Start()
+        {
+            if (_hpText != null)
+            {
+                UpdateHPText(PlayerController.Instance.CurrentHP);
+            }
         }
 
         private void OnDisable()
@@ -73,12 +79,12 @@ namespace PocDiceTactics
             }
         }
 
-        private void OnPlayerDamaged(PlayerDamagedEvent _)
+        private void OnPlayerDamaged(PlayerDamagedEvent evt)
         {
-            UpdateHPText();
+            UpdateHPText(evt.RemainingHp);
         }
 
-        private void UpdateHPText()
+        private void UpdateHPText(int remainingHp)
         {
             if (_hpText == null)
             {
@@ -86,14 +92,7 @@ namespace PocDiceTactics
                 return;
             }
 
-            if (TurnManager.Instance == null)
-            {
-                Debug.LogError("[PlayerHUD] TurnManager.Instance is null");
-                return;
-            }
-
-            int currentHp = Mathf.Max(0, TurnManager.Instance.PlayerCurrentHp);
-            _hpText.text = $"{new string('O', currentHp)}";
+            _hpText.text = $"HP: {new string('♥', Mathf.Max(0, remainingHp))}";
         }
     }
 }

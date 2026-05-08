@@ -85,7 +85,14 @@ namespace PocDiceTactics
             {
                 if (_telegraphTargetCell == playerPos)
                 {
-                    _turnManager.DamagePlayer(_attackDamage);
+                    if (PlayerController.Instance != null)
+                    {
+                        PlayerController.Instance.TakeDamage(_attackDamage);
+                    }
+                    else
+                    {
+                        Debug.LogError("[EnemyController] PlayerController.Instance is null");
+                    }
                     EventBus.Instance?.Publish(new EnemyAttackedEvent { EnemyPosition = _gridPosition });
                 }
 

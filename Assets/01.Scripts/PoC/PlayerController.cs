@@ -11,6 +11,9 @@ namespace PocDiceTactics
     /// </summary>
     public class PlayerController : Singleton<PlayerController>
     {
+        [Header("Stats")]
+        [SerializeField] private int _maxHp = 10;
+
         [Header("2D View")]
         [SerializeField] private float _moveLerpSpeed = 16f;
         [SerializeField] private LayerMask _tileLayerMask = ~0;
@@ -44,7 +47,9 @@ namespace PocDiceTactics
         private bool _isDead;
         private bool _isMoveVisualPlaying;
         private bool _isFiringVisualPlaying;
+        private int _currentHp;
         public int CurrentAP { get; private set; }
+        public int CurrentHP { get; private set; }
 
         public Vector2Int GridPosition => _gridPosition;
         public Vector2Int Facing => _facing;
@@ -107,8 +112,10 @@ namespace PocDiceTactics
             _moveTargetWorld = _gridManager.CellToWorld(_gridPosition);
             transform.position = _moveTargetWorld;
             _isDead = false;
+            CurrentHP = _maxHp;
             CurrentAP = 2;
             EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
+            EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = 0, RemainingHp = _currentHp });
             SetDeathVisualAlpha(1f);
             transform.localScale = Vector3.one;
             UpdateTopFaceText();
@@ -624,11 +631,35 @@ namespace PocDiceTactics
                 transform.position = _moveTargetWorld;
                 transform.localScale = Vector3.one;
                 _isMoveVisualPlaying = false;
-                if (_turnManager != null)
+
+                if (_turnManager != null && CurrentAP <= 0)
                 {
                     _turnManager.OnVisualsCompleted();
                 }
             });
+        }
+
+        public void TakeDamage(int damage)
+        {
+            if (_isDead)
+            {
+                return;
+            }
+
+            _currentHp -= damage;
+            EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = damage, RemainingHp = _currentHp });
+
+            if (_currentHp <= 0)
+            {
+                _currentHp = 0;
+                _isDead = true;
+                EventBus.Instance?.Publish(new PlayerDiedEvent { Position = _gridPosition });
+                EventBus.Instance?.Publish(new GameOverEvent());
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.ChangeState(GameState.GameOver);
+                }
+            }
         }
 
         private void ApplyMoveScale(bool isHorizontal, float t, bool firstHalf)
