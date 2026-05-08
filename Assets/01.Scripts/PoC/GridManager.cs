@@ -18,10 +18,10 @@ namespace PocDiceTactics
         [SerializeField] private int _maxWallSpawnAttempts = 10;
 
         [Header("Overheat")]
-        [SerializeField] private int _overheatDuration = 2;
+        [SerializeField] private int _maxOverheatTrail = 2;
 
         private readonly HashSet<Vector2Int> _walls = new HashSet<Vector2Int>();
-        private readonly Dictionary<Vector2Int, int> _overheatedTiles = new Dictionary<Vector2Int, int>();
+        private readonly List<Vector2Int> _overheatTrail = new List<Vector2Int>();
         private readonly Dictionary<Vector2Int, MonoBehaviour> _occupants = new Dictionary<Vector2Int, MonoBehaviour>();
 
         public Vector2Int GridSize => _gridSize;
@@ -45,7 +45,7 @@ namespace PocDiceTactics
         public void GenerateGrid(Vector2Int protectedPlayerCell)
         {
             _walls.Clear();
-            _overheatedTiles.Clear();
+            _overheatTrail.Clear();
             _occupants.Clear();
 
             GenerateWalls(protectedPlayerCell);
@@ -157,26 +157,6 @@ namespace PocDiceTactics
             return visited;
         }
 
-        public void UpdateOverheat()
-        {
-            List<Vector2Int> expired = new List<Vector2Int>();
-
-            foreach (var pair in _overheatedTiles)
-            {
-                _overheatedTiles[pair.Key]--;
-                if (_overheatedTiles[pair.Key] <= 0)
-                {
-                    expired.Add(pair.Key);
-                }
-            }
-
-            foreach (Vector2Int cell in expired)
-            {
-                _overheatedTiles.Remove(cell);
-                EventBus.Instance?.Publish(new TileCooledEvent { Cell = cell });
-            }
-        }
-
         public bool IsInside(Vector2Int cell)
         {
             return cell.x >= 0 && cell.x < _gridSize.x && cell.y >= 0 && cell.y < _gridSize.y;
@@ -187,9 +167,20 @@ namespace PocDiceTactics
             return _walls.Contains(cell);
         }
 
+        public bool DestroyWall(Vector2Int cell)
+        {
+            if (_walls.Contains(cell))
+            {
+                _walls.Remove(cell);
+                return true;
+            }
+
+            return false;
+        }
+
         public bool IsOverheated(Vector2Int cell)
         {
-            return _overheatedTiles.ContainsKey(cell);
+            return _overheatTrail.Contains(cell);
         }
 
         public bool IsWalkable(Vector2Int cell, MonoBehaviour mover = null)
@@ -217,11 +208,9 @@ namespace PocDiceTactics
             if (_occupants.TryGetValue(cell, out MonoBehaviour current) && current == actor)
             {
                 _occupants.Remove(cell);
-                // 이동 시 과열
                 if (actor is PlayerController)
                 {
-                    _overheatedTiles[cell] = _overheatDuration;
-                    EventBus.Instance?.Publish(new TileOverheatedEvent { Cell = cell, Duration = _overheatDuration });
+                    AddOverheat(cell);
                 }
             }
         }
@@ -232,7 +221,29 @@ namespace PocDiceTactics
 
             _occupants[to] = actor;
             _occupants.Remove(from);
+            if (actor is PlayerController)
+            {
+                AddOverheat(from);
+            }
             return true;
+        }
+
+        private void AddOverheat(Vector2Int cell)
+        {
+            if (_overheatTrail.Contains(cell))
+            {
+                _overheatTrail.Remove(cell);
+            }
+
+            _overheatTrail.Add(cell);
+            EventBus.Instance?.Publish(new TileOverheatedEvent { Cell = cell });
+
+            while (_overheatTrail.Count > _maxOverheatTrail)
+            {
+                Vector2Int cooled = _overheatTrail[0];
+                _overheatTrail.RemoveAt(0);
+                EventBus.Instance?.Publish(new TileCooledEvent { Cell = cooled });
+            }
         }
 
         public Vector2Int GetRandomEmptyCell()
@@ -263,15 +274,15 @@ namespace PocDiceTactics
 
         public IEnumerable<Vector2Int> GetBresenhamLine(Vector2Int origin, Vector2Int delta, int maxDistance = 100)
         {
-            if (delta == Vector2Int.zero || maxDistance <= 0)
+            if (delta == Vector2Int.zero)
             {
                 yield break;
             }
 
             int x0 = origin.x;
             int y0 = origin.y;
-            int x1 = origin.x + delta.x;
-            int y1 = origin.y + delta.y;
+            int x1 = x0 + delta.x;
+            int y1 = y0 + delta.y;
 
             int dx = Mathf.Abs(x1 - x0);
             int dy = Mathf.Abs(y1 - y0);
@@ -279,8 +290,7 @@ namespace PocDiceTactics
             int sy = y0 < y1 ? 1 : -1;
             int err = dx - dy;
 
-            int stepCount = 0;
-            while (stepCount < maxDistance)
+            while (true)
             {
                 int e2 = err * 2;
 
@@ -296,8 +306,13 @@ namespace PocDiceTactics
                     y0 += sy;
                 }
 
-                stepCount++;
-                yield return new Vector2Int(x0, y0);
+                Vector2Int next = new Vector2Int(x0, y0);
+                if (!IsInside(next))
+                {
+                    yield break;
+                }
+
+                yield return next;
             }
         }
 

@@ -35,6 +35,8 @@ namespace PocDiceTactics
         public PlayerController PlayerController => _playerController;
         public TurnPhase CurrentPhase => _currentPhase;
         public int RoundIndex => _waveManager != null ? _waveManager.RoundIndex : 0;
+        public int PlayerCurrentHp => _playerCurrentHp;
+        public int PlayerMaxHp => _playerMaxHp;
 
         protected override void Awake()
         {
@@ -57,21 +59,7 @@ namespace PocDiceTactics
 
             SetPhase(TurnPhase.PlayerTurn);
             EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
-        }
-
-        private void OnEnable()
-        {
-            EventBus.Instance.Subscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
-        }
-
-        private void OnDisable()
-        {
-            if (EventBus.Instance == null)
-            {
-                return;
-            }
-
-            EventBus.Instance.Unsubscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
+            EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = 0, RemainingHp = _playerCurrentHp });
         }
 
         public void EndPlayerTurn()
@@ -82,9 +70,25 @@ namespace PocDiceTactics
             SetPhase(TurnPhase.WaitingForVisual);
         }
 
-        private void OnVisualSequenceComplete(VisualSequenceCompleteEvent _)
+        public void OnVisualsCompleted()
         {
-            if (!_isWaitingForVisual || _isGameOver)
+            if (_isGameOver)
+            {
+                return;
+            }
+
+            if (_currentPhase != TurnPhase.WaitingForVisual || !_isWaitingForVisual)
+            {
+                return;
+            }
+
+            if (_playerController == null)
+            {
+                Debug.LogError("[TurnManager] _playerController is null");
+                return;
+            }
+
+            if (_playerController.CurrentAP > 0)
             {
                 return;
             }
@@ -93,7 +97,6 @@ namespace PocDiceTactics
             SetPhase(TurnPhase.EnemyTurn);
             EventBus.Instance?.Publish(new EnemyTurnStartedEvent());
             _waveManager.ExecuteEnemyTurnsAndTelegraphs();
-            _gridManager.UpdateOverheat();
 
             if (_waveManager.AliveEnemyCount == 0)
             {
@@ -151,6 +154,27 @@ namespace PocDiceTactics
         {
             _currentPhase = phase;
             EventBus.Instance?.Publish(new PhaseChangedEvent { Phase = _currentPhase });
+        }
+
+        private void OnEnable()
+        {
+            if (EventBus.Instance != null)
+            {
+                EventBus.Instance.Subscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (EventBus.Instance != null)
+            {
+                EventBus.Instance.Unsubscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
+            }
+        }
+
+        private void OnVisualSequenceComplete(VisualSequenceCompleteEvent _)
+        {
+            OnVisualsCompleted();
         }
     }
 }

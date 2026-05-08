@@ -22,13 +22,13 @@ namespace PocDiceTactics
             // 1. 탄환 이미지 세팅
             if (_iconImage != null)
             {
-                _iconImage.sprite = data.BulletIcon;
+                _iconImage.sprite = data.DisplayIcon;
             }
 
             // 2. 아웃라인 이펙트 컬러 세팅
             if (_iconOutline != null)
             {
-                Color outlineColor = data.ThemeColor;
+                Color outlineColor = data.DisplayThemeColor;
                 outlineColor.a = 1f; // 외곽선 투명도 (필요 시 조절)
                 _iconOutline.effectColor = outlineColor;
             }
@@ -37,15 +37,14 @@ namespace PocDiceTactics
             if (_numberText != null)
             {
                 _numberText.text = data.BulletType.ToString();
-                _numberText.color = data.ThemeColor;
+                _numberText.color = Color.white;
             }
 
             // 4. 조그만 라벨 세팅
             if (_nameText != null)
             {
-                Color labelColor = data.ThemeColor;
-                labelColor.a = 0.5f;
-                _nameText.color = labelColor;
+                _nameText.color = Color.white;
+                _nameText.text = data.DisplayName;
             }
         }
     }

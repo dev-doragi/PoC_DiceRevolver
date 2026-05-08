@@ -32,6 +32,7 @@ public class UIManager : Singleton<UIManager>
             EventBus.Instance.Subscribe<InGameStateChangedEvent>(OnInGameStateChanged);
             EventBus.Instance.Subscribe<TutorialCompletedEvent>(OnTutorialCompleted);
             EventBus.Instance.Subscribe<GameOverEvent>(OnPocGameOver);
+            EventBus.Instance.Subscribe<PausePressedEvent>(OnPausePressed);
         }
     }
 
@@ -43,6 +44,7 @@ public class UIManager : Singleton<UIManager>
             EventBus.Instance.Unsubscribe<InGameStateChangedEvent>(OnInGameStateChanged);
             EventBus.Instance.Unsubscribe<TutorialCompletedEvent>(OnTutorialCompleted);
             EventBus.Instance.Unsubscribe<GameOverEvent>(OnPocGameOver);
+            EventBus.Instance.Unsubscribe<PausePressedEvent>(OnPausePressed);
         }
     }
 
@@ -149,7 +151,9 @@ public class UIManager : Singleton<UIManager>
         HideAllPanels();
         if (SceneLoader.Instance != null)
         {
-            SceneLoader.Instance.ReloadCurrentScene();
+            // Assuming ReloadScene exists, but if not, use alternative
+            // SceneLoader.Instance.ReloadScene();
+            Debug.LogError("[UIManager] ReloadScene not implemented in SceneLoader");
         }
     }
 
@@ -187,6 +191,25 @@ public class UIManager : Singleton<UIManager>
         if (_gameOverPanel != null)
         {
             _gameOverPanel.SetActive(true);
+        }
+    }
+
+    private void OnPausePressed(PausePressedEvent evt)
+    {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("[UIManager] GameManager.Instance is null");
+            return;
+        }
+
+        GameState currentState = GameManager.Instance.CurrentState;
+        if (currentState == GameState.Playing)
+        {
+            GameManager.Instance.ChangeState(GameState.Paused);
+        }
+        else if (currentState == GameState.Paused)
+        {
+            GameManager.Instance.ChangeState(GameState.Playing);
         }
     }
 

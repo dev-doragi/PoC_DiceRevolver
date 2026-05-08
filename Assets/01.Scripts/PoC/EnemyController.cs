@@ -152,6 +152,12 @@ namespace PocDiceTactics
             _shackleRemainingTurns = Mathf.Max(_shackleRemainingTurns, turns);
         }
 
+        public void ApplyStun(int turns)
+        {
+            ClearTelegraphIfNeeded();
+            _shackleRemainingTurns = Mathf.Max(_shackleRemainingTurns, turns);
+        }
+
         public void TakeDamage(int damage)
         {
             _currentHp -= damage;
@@ -168,6 +174,10 @@ namespace PocDiceTactics
         private void Die()
         {
             ClearTelegraphIfNeeded();
+            if (PoolManager.Instance != null)
+            {
+                PoolManager.Instance.Spawn("Explosion", transform.position, Quaternion.identity);
+            }
             _gridManager.UnregisterOccupant(_gridPosition, this);
             _waveManager.NotifyEnemyDead(this);
             EventBus.Instance?.Publish(new EnemyDiedEvent { EnemyPosition = _gridPosition });

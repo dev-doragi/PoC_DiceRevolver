@@ -9,8 +9,10 @@ namespace PocDiceTactics
     public class BulletUIData : ScriptableObject
     {
         public int BulletType;
-        public string BulletName;
-        public Sprite BulletIcon;
-        public Color ThemeColor;
+        public BulletLogicSO BulletLogic;
+
+        public string DisplayName => BulletLogic != null ? BulletLogic.BulletName : string.Empty;
+        public Sprite DisplayIcon => BulletLogic != null ? BulletLogic.Icon : null;
+        public Color DisplayThemeColor => BulletLogic != null ? BulletLogic.ThemeColor : Color.white;
     }
 }

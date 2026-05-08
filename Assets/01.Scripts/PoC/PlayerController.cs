@@ -43,6 +43,8 @@ namespace PocDiceTactics
         private Camera _mainCamera;
         private bool _isDead;
         private bool _isMoveVisualPlaying;
+        private bool _isFiringVisualPlaying;
+        public int CurrentAP { get; private set; }
 
         public Vector2Int GridPosition => _gridPosition;
         public Vector2Int Facing => _facing;
@@ -71,6 +73,7 @@ namespace PocDiceTactics
             EventBus.Instance.Subscribe<RightClickEvent>(OnRightClick);
             EventBus.Instance.Subscribe<PlayerDiedEvent>(OnPlayerDied);
             EventBus.Instance.Subscribe<CylinderDryFiredEvent>(OnCylinderDryFired);
+            EventBus.Instance.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
         }
 
         public void OnDisable()
@@ -90,6 +93,7 @@ namespace PocDiceTactics
             EventBus.Instance.Unsubscribe<RightClickEvent>(OnRightClick);
             EventBus.Instance.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
             EventBus.Instance.Unsubscribe<CylinderDryFiredEvent>(OnCylinderDryFired);
+            EventBus.Instance.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
         }
 
         public void Initialize(TurnManager turnManager, GridManager gridManager, CylinderSystem cylinderSystem, Vector2Int startCell)
@@ -103,6 +107,8 @@ namespace PocDiceTactics
             _moveTargetWorld = _gridManager.CellToWorld(_gridPosition);
             transform.position = _moveTargetWorld;
             _isDead = false;
+            CurrentAP = 2;
+            EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
             SetDeathVisualAlpha(1f);
             transform.localScale = Vector3.one;
             UpdateTopFaceText();
@@ -123,6 +129,11 @@ namespace PocDiceTactics
 
         private void HandleMoveInput(Vector2Int direction)
         {
+            if (CurrentAP <= 0)
+            {
+                return;
+            }
+
             if (!_hasPendingMove || _pendingMoveDirection != direction)
             {
                 _pendingMoveDirection = direction;
@@ -251,6 +262,11 @@ namespace PocDiceTactics
 
         private void TryMove(Vector2Int direction)
         {
+            if (CurrentAP <= 0)
+            {
+                return;
+            }
+
             Vector2Int nextCell = _gridPosition + direction;
             if (!_gridManager.TryMoveOccupant(_gridPosition, nextCell, this))
             {
@@ -275,7 +291,7 @@ namespace PocDiceTactics
                 return;
             }
 
-            _turnManager.EndPlayerTurn();
+            ConsumeAPAndCheckTurn(true);
             PlayMoveVisualSequence(direction, nextTopFace);
         }
 
@@ -367,17 +383,21 @@ namespace PocDiceTactics
 
         private void TryFire()
         {
+            if (CurrentAP <= 0)
+            {
+                return;
+            }
+
             if (_cylinderSystem != null)
             {
-                _cylinderSystem.Fire(_gridPosition, _facing);
-                PlayRecoil(_facing);
-                if (_turnManager == null)
+                if (_isFiringVisualPlaying)
                 {
-                    Debug.LogError("[PlayerController] _turnManager is null");
                     return;
                 }
 
-                _turnManager.EndPlayerTurn();
+                _cylinderSystem.Fire(_gridPosition, _facing);
+                ConsumeAPAndCheckTurn(false);
+                PlayRecoil(_facing);
             }
             else
             {
@@ -410,6 +430,16 @@ namespace PocDiceTactics
 
         private void TryFireAtMouseTarget()
         {
+            if (CurrentAP <= 0)
+            {
+                return;
+            }
+
+            if (_isFiringVisualPlaying)
+            {
+                return;
+            }
+
             if (_cylinderSystem == null)
             {
                 Debug.LogError("[PlayerController] _cylinderSystem is null");
@@ -422,7 +452,25 @@ namespace PocDiceTactics
 
             _facing = delta;
             _cylinderSystem.Fire(_gridPosition, delta);
+            ConsumeAPAndCheckTurn(false);
             PlayRecoil(delta);
+        }
+
+        private void OnPhaseChanged(PhaseChangedEvent evt)
+        {
+            if (evt.Phase != TurnPhase.PlayerTurn)
+            {
+                return;
+            }
+
+            CurrentAP = 2;
+            EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
+        }
+
+        private void ConsumeAPAndCheckTurn(bool isMovement)
+        {
+            CurrentAP--;
+            EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
 
             if (_turnManager == null)
             {
@@ -430,7 +478,10 @@ namespace PocDiceTactics
                 return;
             }
 
-            _turnManager.EndPlayerTurn();
+            if (CurrentAP <= 0)
+            {
+                _turnManager.EndPlayerTurn();
+            }
         }
 
         private void PlayBump(Vector2Int direction)
@@ -444,11 +495,22 @@ namespace PocDiceTactics
 
         private void PlayRecoil(Vector2Int fireDirection)
         {
+            _isFiringVisualPlaying = true;
+            if (InputReader.Instance != null)
+            {
+                InputReader.Instance.SetInputBlocked(true);
+            }
+
             transform.DOKill();
 
             Vector2 recoilDirection = new Vector2(-fireDirection.x, -fireDirection.y);
             if (recoilDirection.sqrMagnitude < 0.0001f)
             {
+                _isFiringVisualPlaying = false;
+                if (InputReader.Instance != null)
+                {
+                    InputReader.Instance.SetInputBlocked(false);
+                }
                 return;
             }
 
@@ -461,7 +523,20 @@ namespace PocDiceTactics
                 .OnComplete(() =>
                 {
                     transform.DOMove(origin, _recoilDuration * 0.5f)
-                        .SetEase(Ease.InQuad);
+                        .SetEase(Ease.InQuad)
+                        .OnComplete(() =>
+                        {
+                            _isFiringVisualPlaying = false;
+                            if (InputReader.Instance != null)
+                            {
+                                InputReader.Instance.SetInputBlocked(false);
+                            }
+
+                            if (_turnManager != null && CurrentAP <= 0)
+                            {
+                                _turnManager.OnVisualsCompleted();
+                            }
+                        });
                 });
         }
 
@@ -482,7 +557,7 @@ namespace PocDiceTactics
 
             if (_turnManager.CurrentPhase == TurnPhase.WaitingForVisual)
             {
-                EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
+                _turnManager.OnVisualsCompleted();
             }
         }
 
@@ -549,7 +624,10 @@ namespace PocDiceTactics
                 transform.position = _moveTargetWorld;
                 transform.localScale = Vector3.one;
                 _isMoveVisualPlaying = false;
-                EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
+                if (_turnManager != null)
+                {
+                    _turnManager.OnVisualsCompleted();
+                }
             });
         }
 

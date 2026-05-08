@@ -351,7 +351,7 @@ Canvas:
   m_VertexColorAlwaysGammaSpace: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
+  m_SortingLayerID: 715829551
   m_SortingOrder: 0
   m_TargetDisplay: 0
 --- !u!114 &8071279217952839317
@@ -529,6 +529,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2edaa0068410e4a4e92724a1aeb8fff6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.EnemyController
-  _maxHp: 2
+  _maxHp: 5
   _attackDamage: 1
   _worldUI: {fileID: 4210343187061422885}

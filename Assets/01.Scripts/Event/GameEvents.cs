@@ -148,6 +148,12 @@ public struct ShotFiredEvent
     public Vector2Int Origin;
     public Vector2Int Direction;
     public int BulletType;
+    public System.Collections.Generic.List<Vector3> PathPoints;
+}
+
+public struct PlayerAPChangedEvent
+{
+    public int CurrentAP;
 }
 
 public struct CylinderDryFiredEvent
@@ -158,7 +164,6 @@ public struct CylinderDryFiredEvent
 public struct TileOverheatedEvent
 {
     public Vector2Int Cell;
-    public int Duration;
 }
 
 public struct TileCooledEvent

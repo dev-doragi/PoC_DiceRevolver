@@ -117,6 +117,7 @@ namespace PocDiceTactics
                     tile.name = $"Tile_{x}_{y}";
                     tile.transform.position = _gridManager.CellToWorld(cell) + _tileOffset;
                     tile.Initialize(cell, _gridManager.IsWall(cell));
+                    tile.SetOverheated(_gridManager.IsOverheated(cell));
 
                     _tileMap[cell] = tile;
                 }
@@ -264,50 +265,18 @@ namespace PocDiceTactics
 
         private void PlayLaserEffect(ShotFiredEvent e)
         {
-            if (_gridManager == null || _laserLine == null)
+            if (_laserLine == null)
             {
                 _isLaserRunning = false;
                 TryCompleteShotVisualSequence();
                 return;
             }
 
-            List<Vector2Int> shotPath = CalculateShotPath(e);
-            if (shotPath.Count == 0)
+            if (e.PathPoints == null || e.PathPoints.Count == 0)
             {
                 _isLaserRunning = false;
                 TryCompleteShotVisualSequence();
                 return;
-            }
-
-            List<Vector3> worldPath = new List<Vector3>(shotPath.Count + 1)
-            {
-                _gridManager.CellToWorld(e.Origin)
-            };
-
-            Vector2Int previousStep = shotPath[0] - e.Origin;
-
-            for (int i = 1; i < shotPath.Count; i++)
-            {
-                Vector2Int currentCell = shotPath[i];
-                Vector2Int currentStep = currentCell - shotPath[i - 1];
-
-                int directionDot = (previousStep.x * currentStep.x) + (previousStep.y * currentStep.y);
-                if (directionDot <= 0)
-                {
-                    Vector3 turnPoint = _gridManager.CellToWorld(shotPath[i - 1]);
-                    if (worldPath[worldPath.Count - 1] != turnPoint)
-                    {
-                        worldPath.Add(turnPoint);
-                    }
-                }
-
-                previousStep = currentStep;
-            }
-
-            Vector3 finalPoint = _gridManager.CellToWorld(shotPath[shotPath.Count - 1]);
-            if (worldPath[worldPath.Count - 1] != finalPoint)
-            {
-                worldPath.Add(finalPoint);
             }
 
             if (_laserRoutine != null)
@@ -316,145 +285,102 @@ namespace PocDiceTactics
             }
 
             _isLaserRunning = true;
-            _laserRoutine = StartCoroutine(PlayLaserTravelRoutine(worldPath, GetShotColor(e.BulletType)));
+            List<Vector3> straightPath = SmoothLaserPath(e.PathPoints, e.BulletType);
+            _laserRoutine = StartCoroutine(PlayLaserTravelRoutine(straightPath, GetShotColor(e.BulletType)));
         }
 
-        private List<Vector2Int> CalculateShotPath(ShotFiredEvent e)
+        private List<Vector3> SmoothLaserPath(List<Vector3> rawPath, int bulletType)
         {
-            List<Vector2Int> path = new List<Vector2Int>();
+            if (rawPath == null || rawPath.Count <= 2)
+            {
+                return rawPath;
+            }
+
             if (_gridManager == null)
             {
-                return path;
+                Debug.LogError("[GridViewManager] _gridManager is null");
+                return rawPath;
             }
 
-            if (e.Direction == Vector2Int.zero)
+            List<Vector3> smoothPath = new List<Vector3>();
+            smoothPath.Add(rawPath[0]);
+
+            if (bulletType != 3)
             {
-                return path;
+                smoothPath.Add(rawPath[rawPath.Count - 1]);
+                return smoothPath;
             }
 
-            if (e.BulletType == 6)
+            int lastSignX = 0;
+            int lastSignY = 0;
+            Vector2Int prevCell = _gridManager.WorldToCell(rawPath[0]);
+
+            for (int i = 1; i < rawPath.Count - 1; i++)
             {
-                foreach (Vector2Int cell in _gridManager.GetBresenhamLine(e.Origin, e.Direction))
+                Vector2Int currCell = _gridManager.WorldToCell(rawPath[i]);
+                if (currCell == prevCell)
                 {
-                    if (!_gridManager.IsInside(cell))
-                    {
-                        break;
-                    }
-
-                    path.Add(cell);
+                    continue;
                 }
 
-                return path;
-            }
+                Vector2Int step = currCell - prevCell;
+                int signX = step.x == 0 ? 0 : (int)Mathf.Sign(step.x);
+                int signY = step.y == 0 ? 0 : (int)Mathf.Sign(step.y);
 
-            if (IsRicochetBullet(e.BulletType))
-            {
-                Vector2Int currentOrigin = e.Origin;
-                Vector2Int rayDelta = e.Direction;
-                int bounceCount = 0;
-                while (true)
+                bool isBounce = false;
+                if (signX != 0 && lastSignX != 0 && signX != lastSignX)
                 {
-                    bool advanced = false;
-                    foreach (Vector2Int cell in _gridManager.GetBresenhamLine(currentOrigin, rayDelta))
-                    {
-                        if (!_gridManager.IsInside(cell))
-                        {
-                            return path;
-                        }
-
-                        path.Add(cell);
-
-                        if (_gridManager.IsWall(cell))
-                        {
-                            bounceCount++;
-                            if (bounceCount > 1)
-                            {
-                                return path;
-                            }
-
-                            Vector2Int step = cell - currentOrigin;
-                            Vector2Int reflectedStep = ReflectRicochetStep(currentOrigin, step);
-                            if (reflectedStep == Vector2Int.zero)
-                            {
-                                return path;
-                            }
-
-                            int remainingX = rayDelta.x - step.x;
-                            int remainingY = rayDelta.y - step.y;
-                            rayDelta = new Vector2Int(reflectedStep.x + remainingX, reflectedStep.y + remainingY);
-                            currentOrigin = cell;
-                            advanced = true;
-                            break;
-                        }
-
-                        if (_gridManager.GetOccupant(cell) is EnemyController)
-                        {
-                            return path;
-                        }
-
-                        currentOrigin = cell;
-                        advanced = true;
-                    }
-
-                    if (!advanced || rayDelta == Vector2Int.zero)
-                    {
-                        return path;
-                    }
+                    isBounce = true;
                 }
-            }
 
-            if (e.BulletType == 3)
-            {
-                foreach (Vector2Int cell in _gridManager.GetBresenhamLine(e.Origin, e.Direction))
+                if (signY != 0 && lastSignY != 0 && signY != lastSignY)
                 {
-                    if (!_gridManager.IsInside(cell))
+                    isBounce = true;
+                }
+
+                if (isBounce)
+                {
+                    smoothPath.Add(_gridManager.CellToWorld(prevCell));
+                    lastSignX = signX;
+                    lastSignY = signY;
+                }
+                else
+                {
+                    if (signX != 0)
                     {
-                        break;
+                        lastSignX = signX;
                     }
 
-                    path.Add(cell);
-
-                    if (_gridManager.IsWall(cell))
+                    if (signY != 0)
                     {
-                        break;
+                        lastSignY = signY;
                     }
                 }
 
-                return path;
+                prevCell = currCell;
             }
 
-            foreach (Vector2Int cell in _gridManager.GetBresenhamLine(e.Origin, e.Direction))
-            {
-                if (!_gridManager.IsInside(cell))
-                {
-                    break;
-                }
-
-                path.Add(cell);
-
-                if (_gridManager.IsWall(cell))
-                {
-                    break;
-                }
-
-                if (_gridManager.GetOccupant(cell) is EnemyController)
-                {
-                    break;
-                }
-            }
-
-            return path;
+            smoothPath.Add(rawPath[rawPath.Count - 1]);
+            return smoothPath;
         }
 
         private IEnumerator PlayShotPathRoutine(ShotFiredEvent e)
         {
             Color shotColor = GetShotColor(e.BulletType);
-            List<Vector2Int> shotPath = CalculateShotPath(e);
+            if (_gridManager == null)
+            {
+                _shotRoutine = null;
+                _isShotPathRunning = false;
+                TryCompleteShotVisualSequence();
+                yield break;
+            }
+
+            List<Vector3> shotPath = e.PathPoints ?? new List<Vector3>();
 
             for (int i = 0; i < shotPath.Count; i++)
             {
-                Vector2Int cell = shotPath[i];
-                if (_gridManager == null || !_gridManager.IsInside(cell))
+                Vector2Int cell = _gridManager.WorldToCell(shotPath[i]);
+                if (!_gridManager.IsInside(cell))
                 {
                     break;
                 }
@@ -475,51 +401,17 @@ namespace PocDiceTactics
             TryCompleteShotVisualSequence();
         }
 
-        private Vector2Int ReflectRicochetStep(Vector2Int origin, Vector2Int step)
-        {
-            int sx = step.x == 0 ? 0 : (step.x > 0 ? 1 : -1);
-            int sy = step.y == 0 ? 0 : (step.y > 0 ? 1 : -1);
-
-            if (sx == 0 && sy == 0)
-            {
-                return Vector2Int.zero;
-            }
-
-            bool hitX = false;
-            bool hitY = false;
-
-            if (sx != 0)
-            {
-                Vector2Int cellX = origin + new Vector2Int(sx, 0);
-                hitX = !_gridManager.IsInside(cellX) || _gridManager.IsWall(cellX);
-            }
-
-            if (sy != 0)
-            {
-                Vector2Int cellY = origin + new Vector2Int(0, sy);
-                hitY = !_gridManager.IsInside(cellY) || _gridManager.IsWall(cellY);
-            }
-
-            if (hitX) sx = -sx;
-            if (hitY) sy = -sy;
-
-            if (!hitX && !hitY)
-            {
-                sx = -sx;
-                sy = -sy;
-            }
-
-            return new Vector2Int(sx, sy);
-        }
-
         private IEnumerator PlayLaserTravelRoutine(List<Vector3> worldPathPoints, Color shotColor)
         {
             if (_laserLine == null || worldPathPoints == null || worldPathPoints.Count < 2)
             {
                 _laserRoutine = null;
+                _isLaserRunning = false;
+                TryCompleteShotVisualSequence();
                 yield break;
             }
 
+            // 1. 전체 궤적의 길이 계산
             float totalDistance = 0f;
             List<float> segmentLengths = new List<float>(worldPathPoints.Count - 1);
             for (int i = 0; i < worldPathPoints.Count - 1; i++)
@@ -532,19 +424,16 @@ namespace PocDiceTactics
             if (totalDistance <= 0.0001f)
             {
                 _laserRoutine = null;
+                _isLaserRunning = false;
+                TryCompleteShotVisualSequence();
                 yield break;
             }
 
-            Vector3 startWorld = worldPathPoints[0];
-            Vector3 endWorld = worldPathPoints[worldPathPoints.Count - 1];
-            _laserLine.positionCount = 2;
-            _laserLine.SetPosition(0, startWorld);
-            _laserLine.SetPosition(1, startWorld);
-            float elapsed = 0f;
             float travelDuration = Mathf.Max(0.03f, totalDistance / Mathf.Max(0.001f, _laserTravelSpeed));
-
+            float elapsed = 0f;
             _laserLine.enabled = true;
 
+            // 2. 레이저 이동 애니메이션
             while (elapsed < travelDuration)
             {
                 elapsed += Time.deltaTime;
@@ -553,22 +442,50 @@ namespace PocDiceTactics
                 float width = Mathf.Lerp(_laserMinWidth, _laserMaxWidth, pulse);
                 float distanceTraveled = totalDistance * t;
 
-                Vector3 head = EvaluatePointOnPath(worldPathPoints, segmentLengths, distanceTraveled);
-                _laserLine.SetPosition(1, head);
+                // 현재 어느 선분(벽에 튕긴 후의 구간)을 지나고 있는지 계산
+                float remaining = distanceTraveled;
+                int currentSegmentIndex = 0;
+                for (int i = 0; i < segmentLengths.Count; i++)
+                {
+                    if (remaining <= segmentLengths[i] || i == segmentLengths.Count - 1)
+                    {
+                        currentSegmentIndex = i;
+                        break;
+                    }
+                    remaining -= segmentLengths[i];
+                }
+
+                // 현재 레이저의 끝(Head) 위치 계산
+                float segmentT = segmentLengths[currentSegmentIndex] > 0 ? Mathf.Clamp01(remaining / segmentLengths[currentSegmentIndex]) : 1f;
+                Vector3 head = Vector3.Lerp(worldPathPoints[currentSegmentIndex], worldPathPoints[currentSegmentIndex + 1], segmentT);
+
+                _laserLine.positionCount = currentSegmentIndex + 2;
+                for (int i = 0; i <= currentSegmentIndex; i++)
+                {
+                    // 지나온 모서리들은 고정
+                    _laserLine.SetPosition(i, worldPathPoints[i]);
+                }
+                // 가장 앞부분은 날아가는 중인 머리 위치
+                _laserLine.SetPosition(currentSegmentIndex + 1, head);
 
                 _laserLine.startWidth = width;
                 _laserLine.endWidth = width;
                 Color color = shotColor;
                 color.a = 1f;
-
                 _laserLine.startColor = color;
                 _laserLine.endColor = color;
 
                 yield return null;
             }
 
-            _laserLine.SetPosition(1, endWorld);
+            // 3. 이동이 끝난 후에는 전체 궤적(모든 관절)을 완벽히 세팅
+            _laserLine.positionCount = worldPathPoints.Count;
+            for (int i = 0; i < worldPathPoints.Count; i++)
+            {
+                _laserLine.SetPosition(i, worldPathPoints[i]);
+            }
 
+            // 4. 서서히 사라지는 페이드 아웃 연출
             elapsed = 0f;
             float fadeDuration = Mathf.Max(0.01f, _laserFadeDuration);
             while (elapsed < fadeDuration)
@@ -582,7 +499,6 @@ namespace PocDiceTactics
 
                 Color color = shotColor;
                 color.a = Mathf.Lerp(1f, 0f, t);
-
                 _laserLine.startColor = color;
                 _laserLine.endColor = color;
 
@@ -610,7 +526,6 @@ namespace PocDiceTactics
             }
 
             _isShotVisualActive = false;
-            EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
         }
 
         private void PlayEnemyHitPing(Vector3 worldPos)
@@ -713,15 +628,11 @@ namespace PocDiceTactics
             return worldPathPoints[worldPathPoints.Count - 1];
         }
 
-        private bool IsRicochetBullet(int bulletType)
-        {
-            return bulletType == 4;
-        }
-
         private Color GetShotColor(int bulletType)
         {
             switch (bulletType)
             {
+                case 0:
                 case 1:
                 case 2:
                     return new Color(1f, 0.88f, 0.32f, 0.65f);
@@ -730,8 +641,6 @@ namespace PocDiceTactics
                     return new Color(1f, 0.25f, 0.25f, 0.72f);
                 case 5:
                     return new Color(0.9f, 0.9f, 1f, 0.62f);
-                case 6:
-                    return new Color(0.3f, 0.95f, 1f, 0.68f);
                 default:
                     return new Color(1f, 1f, 1f, 0.55f);
             }

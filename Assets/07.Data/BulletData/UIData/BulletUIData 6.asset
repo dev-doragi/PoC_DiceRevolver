@@ -10,9 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a66beeff8da53df408e538db71ff67a2, type: 3}
-  m_Name: BulletUIData 2
+  m_Name: BulletUIData 6
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletUIData
-  BulletType: 1
-  BulletName: "\uCDA9\uACA9 \uD0C4"
-  BulletIcon: {fileID: 21300000, guid: 167e94765bfdb904782e9035018bf649, type: 3}
-  ThemeColor: {r: 0.3137255, g: 0.63529414, b: 1, a: 0}
+  BulletType: 5
+  BulletLogic: {fileID: 11400000, guid: 339813bd455cd8a4996e435dc4a67e60, type: 2}

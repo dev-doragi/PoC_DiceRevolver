@@ -44,6 +44,7 @@ namespace PocDiceTactics
         private bool _isHover;
         private bool _isConfirmHover;
         private int _predictedFace;
+        private bool _isInitialized;
         private BoxCollider2D _tileCollider;
         private Coroutine _shotFlashRoutine;
 
@@ -74,6 +75,22 @@ namespace PocDiceTactics
             UpdateGhostText();
         }
 
+        private void OnEnable()
+        {
+            if (!_isInitialized)
+            {
+                return;
+            }
+
+            if (GridManager.Instance == null)
+            {
+                Debug.LogError("[TileView] GridManager.Instance is null");
+                return;
+            }
+
+            SetOverheated(GridManager.Instance.IsOverheated(_cell));
+        }
+
         public void Initialize(Vector2Int cell, bool isWall)
         {
             _cell = cell;
@@ -84,8 +101,14 @@ namespace PocDiceTactics
             _isConfirmHover = false;
             _predictedFace = 0;
             _originLocalPosition = transform.localPosition;
+            _isInitialized = true;
             ConfigureCollider();
             ApplyImmediate();
+
+            if (GridManager.Instance != null)
+            {
+                SetOverheated(GridManager.Instance.IsOverheated(_cell));
+            }
         }
 
         public void SetWall(bool isWall)
@@ -100,6 +123,8 @@ namespace PocDiceTactics
             if (_heatRenderer != null)
             {
                 _heatRenderer.enabled = _isOverheated;
+                Color color = _heatColor;
+                _heatRenderer.color = color;
             }
         }
 
@@ -200,6 +225,11 @@ namespace PocDiceTactics
             {
                 _hoverRenderer.enabled = _isHover;
                 _hoverRenderer.color = _isConfirmHover ? _confirmColor : _hoverColor;
+            }
+
+            if (_shotFlashRenderer != null)
+            {
+                _shotFlashRenderer.enabled = false;
             }
 
             UpdateGhostText();

@@ -86,6 +86,7 @@ namespace PocDiceTactics
             {
                 float initialAngle = currentFirePointer * -60f;
                 _cylinderWheel.localEulerAngles = new Vector3(0, 0, initialAngle);
+                ApplyChildCounterRotation();
                 _lastFirePointer = currentFirePointer;
                 return;
             }
@@ -94,6 +95,8 @@ namespace PocDiceTactics
 
             _cylinderWheel.DOKill(true);
             _cylinderWheel.DOLocalRotate(new Vector3(0f, 0f, -60f), _rotationDuration, RotateMode.LocalAxisAdd)
+                .OnUpdate(ApplyChildCounterRotation)
+                .OnComplete(ApplyChildCounterRotation)
                 .SetEase(Ease.OutBack);
 
             _lastFirePointer = currentFirePointer;
@@ -101,6 +104,11 @@ namespace PocDiceTactics
 
         private BulletUIData GetBulletData(int type)
         {
+            if (type < 0 || type > 5)
+            {
+                return null;
+            }
+
             foreach (var data in _bulletDataConfigs)
             {
                 if (data != null && data.BulletType == type) return data;
@@ -119,6 +127,31 @@ namespace PocDiceTactics
             PoolManager.Instance.CreatePool(_bulletUIPrefab, 6, 24);
             _isPoolInitialized = true;
             return true;
+        }
+
+        private void ApplyChildCounterRotation()
+        {
+            if (_cylinderWheel == null)
+            {
+                return;
+            }
+
+            float inverseZ = -_cylinderWheel.localEulerAngles.z;
+            for (int i = 0; i < _activeBulletUIs.Length; i++)
+            {
+                if (_activeBulletUIs[i] == null)
+                {
+                    continue;
+                }
+
+                RectTransform rect = _activeBulletUIs[i].transform as RectTransform;
+                if (rect == null)
+                {
+                    continue;
+                }
+
+                rect.localEulerAngles = new Vector3(0f, 0f, inverseZ);
+            }
         }
     }
 }

@@ -13,6 +13,4 @@ MonoBehaviour:
   m_Name: BulletUIData 3
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletUIData
   BulletType: 2
-  BulletName: "\uAD00\uD1B5 \uD0C4"
-  BulletIcon: {fileID: 21300000, guid: 51a7bba1e93c7b742866ebd778b3ad3f, type: 3}
-  ThemeColor: {r: 0, g: 0.82745105, b: 0.9490197, a: 0}
+  BulletLogic: {fileID: 11400000, guid: 708b850b5ef82704c96d6ef767d027e5, type: 2}
