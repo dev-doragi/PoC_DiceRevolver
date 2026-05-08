@@ -10,7 +10,7 @@ namespace PocDiceTactics
         public Sprite Icon;
         public Color ThemeColor = Color.white;
 
-        public abstract List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid);
+        public abstract List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1);
 
         protected EnemyController GetFirstEnemyInLine(Vector2Int origin, Vector2Int direction, GridManager grid, List<Vector3> pathPoints)
         {

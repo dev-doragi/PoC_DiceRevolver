@@ -6,7 +6,7 @@ namespace PocDiceTactics
     [CreateAssetMenu(fileName = "PierceBullet", menuName = "PoC/Bullets/Pierce")]
     public class PierceBulletSO : BulletLogicSO
     {
-        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid)
+        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
             List<Vector3> pathPoints = new List<Vector3>();
             if (grid == null || direction == Vector2Int.zero)
@@ -26,7 +26,7 @@ namespace PocDiceTactics
                 EnemyController enemy = grid.GetOccupant(cell) as EnemyController;
                 if (enemy != null)
                 {
-                    enemy.TakeDamage(Damage);
+                    enemy.TakeDamage(Damage * damageMultiplier);
                 }
             }
 

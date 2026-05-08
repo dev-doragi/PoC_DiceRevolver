@@ -9,7 +9,7 @@ namespace PocDiceTactics
         [SerializeField] private int _maxBounces = 2;
         [SerializeField] private float _stepSize = 0.25f; // 레이캐스트 정밀도
 
-        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid)
+        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
             List<Vector3> pathPoints = new List<Vector3>();
             if (grid == null || direction == Vector2Int.zero) return pathPoints;
@@ -65,7 +65,7 @@ namespace PocDiceTactics
                         pathPoints.Add(grid.CellToWorld(currentCell));
                         if (enemy != null)
                         {
-                            enemy.TakeDamage(Damage);
+                            enemy.TakeDamage(Damage * damageMultiplier);
                             return pathPoints; // 타격 후 소멸
                         }
                     }

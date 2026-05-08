@@ -40,6 +40,7 @@ namespace PocDiceTactics
         private void RefreshUI(CylinderStateChangedEvent evt)
         {
             if (!EnsurePoolReady()) return;
+            bool isRouletteMode = GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette;
 
             // 1. 탄환 UI 갱신 (기존과 동일)
             for (int i = 0; i < 6; i++)
@@ -51,7 +52,7 @@ namespace PocDiceTactics
                 }
 
                 int? bulletType = evt.Chambers[i];
-                if (bulletType.HasValue)
+                if (bulletType.HasValue || isRouletteMode)
                 {
                     GameObject bulletObj = PoolManager.Instance.Spawn(_bulletPrefabKey, Vector3.zero, Quaternion.identity);
                     if (bulletObj == null) continue;
@@ -63,7 +64,17 @@ namespace PocDiceTactics
                     BulletUI bulletUI = bulletObj.GetComponent<BulletUI>();
                     if (bulletUI != null)
                     {
-                        bulletUI.Setup(GetBulletData(bulletType.Value));
+                        if (isRouletteMode)
+                        {
+                            BulletUIData fallbackData = bulletType.HasValue ? GetBulletData(bulletType.Value) : GetFallbackBulletData();
+                            bulletUI.Setup(fallbackData);
+                        }
+                        else
+                        {
+                            bulletUI.Setup(GetBulletData(bulletType.Value));
+                        }
+
+                        bulletUI.SetAlphaObscured(isRouletteMode);
                         _activeBulletUIs[i] = bulletUI;
                     }
                 }
@@ -113,6 +124,24 @@ namespace PocDiceTactics
             {
                 if (data != null && data.BulletType == type) return data;
             }
+            return null;
+        }
+
+        private BulletUIData GetFallbackBulletData()
+        {
+            if (_bulletDataConfigs == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _bulletDataConfigs.Length; i++)
+            {
+                if (_bulletDataConfigs[i] != null)
+                {
+                    return _bulletDataConfigs[i];
+                }
+            }
+
             return null;
         }
 

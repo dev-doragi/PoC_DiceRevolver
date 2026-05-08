@@ -47,6 +47,7 @@ namespace PocDiceTactics
         private bool _isDead;
         private bool _isMoveVisualPlaying;
         private bool _isFiringVisualPlaying;
+        private Coroutine _gatlingRoutine;
         private int _currentHp;
         public int CurrentAP { get; private set; }
         public int CurrentHP { get; private set; }
@@ -402,9 +403,21 @@ namespace PocDiceTactics
                     return;
                 }
 
-                _cylinderSystem.Fire(_gridPosition, _facing);
-                ConsumeAPAndCheckTurn(false);
-                PlayRecoil(_facing);
+                if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.Gatling)
+                {
+                    if (_gatlingRoutine != null)
+                    {
+                        StopCoroutine(_gatlingRoutine);
+                    }
+
+                    _gatlingRoutine = StartCoroutine(FireGatlingRoutine(_facing));
+                }
+                else
+                {
+                    _cylinderSystem.Fire(_gridPosition, _facing);
+                    ConsumeAPAndCheckTurn(false);
+                    PlayRecoil(_facing);
+                }
             }
             else
             {
@@ -458,9 +471,21 @@ namespace PocDiceTactics
             if (delta == Vector2Int.zero) return;
 
             _facing = delta;
-            _cylinderSystem.Fire(_gridPosition, delta);
-            ConsumeAPAndCheckTurn(false);
-            PlayRecoil(delta);
+            if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.Gatling)
+            {
+                if (_gatlingRoutine != null)
+                {
+                    StopCoroutine(_gatlingRoutine);
+                }
+
+                _gatlingRoutine = StartCoroutine(FireGatlingRoutine(delta));
+            }
+            else
+            {
+                _cylinderSystem.Fire(_gridPosition, delta);
+                ConsumeAPAndCheckTurn(false);
+                PlayRecoil(delta);
+            }
         }
 
         private void OnPhaseChanged(PhaseChangedEvent evt)
@@ -470,8 +495,36 @@ namespace PocDiceTactics
                 return;
             }
 
-            CurrentAP = 2;
+            if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.APPumping)
+            {
+                CurrentAP = _topFace;
+            }
+            else
+            {
+                CurrentAP = 2;
+            }
             EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
+        }
+
+        private IEnumerator FireGatlingRoutine(Vector2Int direction)
+        {
+            int shots = _topFace;
+            for (int i = 0; i < shots; i++)
+            {
+                bool success = _cylinderSystem.TryPeekAndFire(_gridPosition, direction);
+                if (!success)
+                {
+                    EventBus.Instance?.Publish(new CylinderDryFiredEvent { ChamberIndex = -1 });
+                    break;
+                }
+
+                PlayRecoil(direction);
+                yield return new WaitForSeconds(0.15f);
+            }
+
+            _cylinderSystem.ConsumeCurrentChamberAndRotate();
+            ConsumeAPAndCheckTurn(false);
+            _gatlingRoutine = null;
         }
 
         private void ConsumeAPAndCheckTurn(bool isMovement)
@@ -660,6 +713,20 @@ namespace PocDiceTactics
                     GameManager.Instance.ChangeState(GameState.GameOver);
                 }
             }
+        }
+
+        public void ForceEndTurnFromOverload()
+        {
+            CurrentAP = 0;
+            EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
+
+            if (_turnManager == null)
+            {
+                Debug.LogError("[PlayerController] _turnManager is null");
+                return;
+            }
+
+            _turnManager.EndPlayerTurn();
         }
 
         private void ApplyMoveScale(bool isHorizontal, float t, bool firstHalf)

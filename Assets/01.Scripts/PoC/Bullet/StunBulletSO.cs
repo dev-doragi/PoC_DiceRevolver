@@ -8,7 +8,7 @@ namespace PocDiceTactics
     {
         [SerializeField] private int _stunTurns = 2;
 
-        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid)
+        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
             List<Vector3> pathPoints = new List<Vector3>();
             EnemyController enemy = GetFirstEnemyInLine(origin, direction, grid, pathPoints);
@@ -17,7 +17,7 @@ namespace PocDiceTactics
                 return pathPoints;
             }
 
-            enemy.TakeDamage(Damage);
+            enemy.TakeDamage(Damage * damageMultiplier);
             enemy.ApplyStun(_stunTurns);
 
             return pathPoints;

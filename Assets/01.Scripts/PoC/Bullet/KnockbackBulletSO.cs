@@ -8,7 +8,7 @@ namespace PocDiceTactics
     {
         [SerializeField] private int _wallCollisionDamage = 1;
 
-        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid)
+        public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
             List<Vector3> pathPoints = new List<Vector3>();
             if (grid == null || direction == Vector2Int.zero)
@@ -22,7 +22,7 @@ namespace PocDiceTactics
                 return pathPoints;
             }
 
-            enemy.TakeDamage(Damage);
+            enemy.TakeDamage(Damage * damageMultiplier);
 
             Vector2Int pushStep = new Vector2Int(
                 direction.x == 0 ? 0 : (direction.x > 0 ? 1 : -1),

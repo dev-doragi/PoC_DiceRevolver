@@ -804,7 +804,6 @@ MonoBehaviour:
   _playerController: {fileID: 1637257827}
   _cylinderSystem: {fileID: 1050411815}
   _waveManager: {fileID: 966860150}
-  _playerMaxHp: 10
 --- !u!4 &421773839
 Transform:
   m_ObjectHideFlags: 0
@@ -2941,6 +2940,52 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3284879914435679378, guid: eb68c037959ed9d4eaa2704fe80fbb3b, type: 3}
   m_PrefabInstance: {fileID: 1680415440}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1706314260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1706314262}
+  - component: {fileID: 1706314261}
+  m_Layer: 0
+  m_Name: GameModeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1706314261
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706314260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d1fcbb9603d6544a8d7cf77538599bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.GameModeManager
+  _isDontDestroyOnLoad: 1
+  _currentMode: 3
+--- !u!4 &1706314262
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706314260}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1764043565 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5427144226753415282, guid: 3dfa3598a0e8a3d40b24b33cbe7e2402, type: 3}
@@ -4468,6 +4513,7 @@ SceneRoots:
   - {fileID: 6728780417654085609}
   - {fileID: 1071623082698989454}
   - {fileID: 2136744067}
+  - {fileID: 1706314262}
   - {fileID: 421773839}
   - {fileID: 1808568742}
   - {fileID: 357625839}

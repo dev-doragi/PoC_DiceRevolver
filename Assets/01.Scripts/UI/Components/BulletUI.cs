@@ -15,6 +15,9 @@ namespace PocDiceTactics
         [SerializeField] private TextMeshProUGUI _numberText;
         [SerializeField] private TextMeshProUGUI _nameText;
 
+        private Color _defaultIconColor = Color.white;
+        private Color _defaultOutlineColor = Color.white;
+
         public void Setup(BulletUIData data)
         {
             if (data == null) return;
@@ -23,6 +26,7 @@ namespace PocDiceTactics
             if (_iconImage != null)
             {
                 _iconImage.sprite = data.DisplayIcon;
+                _iconImage.color = _defaultIconColor;
             }
 
             // 2. 아웃라인 이펙트 컬러 세팅
@@ -31,6 +35,7 @@ namespace PocDiceTactics
                 Color outlineColor = data.DisplayThemeColor;
                 outlineColor.a = 1f; // 외곽선 투명도 (필요 시 조절)
                 _iconOutline.effectColor = outlineColor;
+                _defaultOutlineColor = outlineColor;
             }
 
             // 3. 큰 숫자 세팅
@@ -45,6 +50,44 @@ namespace PocDiceTactics
             {
                 _nameText.color = Color.white;
                 _nameText.text = data.DisplayName;
+            }
+
+            _defaultIconColor = _iconImage != null ? _iconImage.color : Color.white;
+        }
+
+        public void SetMasked(Color maskColor)
+        {
+            if (_iconImage != null)
+            {
+                _iconImage.color = maskColor;
+            }
+
+            if (_iconOutline != null)
+            {
+                _iconOutline.effectColor = maskColor;
+            }
+        }
+
+        public void SetAlphaObscured(bool obscure)
+        {
+            if (_iconImage != null)
+            {
+                _iconImage.color = obscure ? Color.black : _defaultIconColor;
+            }
+
+            if (_iconOutline != null)
+            {
+                _iconOutline.effectColor = obscure ? Color.black : _defaultOutlineColor;
+            }
+
+            if (_numberText != null)
+            {
+                _numberText.gameObject.SetActive(!obscure);
+            }
+
+            if (_nameText != null)
+            {
+                _nameText.gameObject.SetActive(!obscure);
             }
         }
     }

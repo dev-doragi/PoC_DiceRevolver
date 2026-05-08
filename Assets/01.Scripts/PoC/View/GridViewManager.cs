@@ -29,7 +29,7 @@ namespace PocDiceTactics
         [SerializeField] private float _laserMaxWidth = 0.1f;
         [SerializeField] private GameObject _damagePopupPrefab;
         [SerializeField] private Transform _damagePopupCanvasRoot;
-        [SerializeField] private string _hitParticleKey = "PS_HitExplosion";
+        [SerializeField] private string _hitParticleKey = "Explosion";
 
         private readonly Dictionary<Vector2Int, TileView> _tileMap = new Dictionary<Vector2Int, TileView>();
         private readonly HashSet<Vector2Int> _telegraphCells = new HashSet<Vector2Int>();

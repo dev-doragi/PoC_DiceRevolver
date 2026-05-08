@@ -14,6 +14,7 @@ namespace PocDiceTactics
         private readonly int?[] _chambers = new int?[6];
         private int _firePointer = 0;
         private int _loadPointer = 3; // (0 + 3) % 6
+        private int _blackjackSum = 0;
 
         private TurnManager _turnManager;
         private GridManager _gridManager;
@@ -39,12 +40,60 @@ namespace PocDiceTactics
 
         public void OnPlayerMoved(int topFace, bool isOverheated)
         {
+            if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.BlackjackCylinder)
+            {
+                if (isOverheated)
+                {
+                    return;
+                }
+
+                _blackjackSum += topFace;
+                if (_blackjackSum > 6)
+                {
+                    _blackjackSum = 0;
+                    _chambers[_firePointer] = null;
+
+                    if (PlayerController.Instance != null)
+                    {
+                        PlayerController.Instance.TakeDamage(1);
+                        PlayerController.Instance.ForceEndTurnFromOverload();
+
+                        if (PoolManager.Instance != null)
+                        {
+                            PoolManager.Instance.Spawn("Explosion", PlayerController.Instance.transform.position, Quaternion.identity);
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError("[CylinderSystem] PlayerController.Instance is null");
+                    }
+                }
+                else
+                {
+                    _chambers[_firePointer] = _blackjackSum - 1;
+                }
+
+                PublishStateSnapshot();
+                return;
+            }
+
             RotateCylinder();
 
             if (!isOverheated && !_chambers[_loadPointer].HasValue)
             {
-                _chambers[_loadPointer] = Mathf.Clamp(topFace - 1, 0, 5);
-                EventBus.Instance?.Publish(new CylinderLoadedEvent { ChamberIndex = _loadPointer, BulletType = _chambers[_loadPointer].Value });
+                if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
+                {
+                    if (Random.Range(0, 6) == 0)
+                    {
+                        _chambers[_loadPointer] = 5;
+                        EventBus.Instance?.Publish(new CylinderLoadedEvent { ChamberIndex = _loadPointer, BulletType = _chambers[_loadPointer].Value });
+                    }
+                }
+                else
+                {
+                    _chambers[_loadPointer] = Mathf.Clamp(topFace - 1, 0, 5);
+                    EventBus.Instance?.Publish(new CylinderLoadedEvent { ChamberIndex = _loadPointer, BulletType = _chambers[_loadPointer].Value });
+                }
             }
 
             PublishStateSnapshot(); // 행동 완료 후 스냅샷 전달
@@ -60,7 +109,13 @@ namespace PocDiceTactics
                 int bulletType = loadedBullet.Value;
                 if (bulletType >= 0 && bulletType < _bulletDatabase.Length && _bulletDatabase[bulletType] != null)
                 {
-                    pathPoints = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager);
+                    int damageMultiplier = 1;
+                    if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
+                    {
+                        damageMultiplier = 10;
+                    }
+
+                    pathPoints = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, damageMultiplier);
                 }
                 else
                 {
@@ -75,6 +130,12 @@ namespace PocDiceTactics
                     PathPoints = pathPoints
                 });
                 _chambers[_firePointer] = null;
+
+                if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.BlackjackCylinder)
+                {
+                    _blackjackSum = 0;
+                }
+
                 EventBus.Instance?.Publish(new CylinderFiredEvent { ChamberIndex = _firePointer, BulletType = bulletType });
             }
             else
@@ -85,6 +146,47 @@ namespace PocDiceTactics
 
             RotateCylinder();
             PublishStateSnapshot(); // 행동 완료 후 스냅샷 전달
+        }
+
+        public bool TryPeekAndFire(Vector2Int origin, Vector2Int direction)
+        {
+            int? loadedType = _chambers[_firePointer];
+            if (!loadedType.HasValue)
+            {
+                return false;
+            }
+
+            int bulletType = loadedType.Value;
+            if (bulletType < 0 || bulletType >= _bulletDatabase.Length || _bulletDatabase[bulletType] == null)
+            {
+                Debug.LogError($"[CylinderSystem] Invalid bullet type or missing SO: {bulletType}");
+                return false;
+            }
+
+            List<Vector3> path = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, 1);
+            EventBus.Instance?.Publish(new ShotFiredEvent
+            {
+                Origin = origin,
+                Direction = direction,
+                BulletType = bulletType,
+                PathPoints = path
+            });
+
+            return true;
+        }
+
+        public void ConsumeCurrentChamberAndRotate()
+        {
+            int? loadedType = _chambers[_firePointer];
+            _chambers[_firePointer] = null;
+            EventBus.Instance?.Publish(new CylinderFiredEvent
+            {
+                ChamberIndex = _firePointer,
+                BulletType = loadedType ?? -1
+            });
+
+            RotateCylinder();
+            PublishStateSnapshot();
         }
 
         private void RotateCylinder()
