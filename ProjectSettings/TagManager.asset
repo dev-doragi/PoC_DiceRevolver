@@ -41,7 +41,22 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
-  - name: UI
+  - name: Background
+    uniqueID: 2158936513
+    locked: 0
+  - name: Overheat
+    uniqueID: 3377161013
+    locked: 0
+  - name: Telegraph
+    uniqueID: 543983569
+    locked: 0
+  - name: Entity
+    uniqueID: 2916306419
+    locked: 0
+  - name: VFX
+    uniqueID: 3474575949
+    locked: 0
+  - name: WorldUI
     uniqueID: 715829551
     locked: 0
   m_RenderingLayers:

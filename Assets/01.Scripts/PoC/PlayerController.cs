@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
 using DG.Tweening;
+using TMPro;
 
 namespace PocDiceTactics
 {
@@ -19,6 +20,8 @@ namespace PocDiceTactics
         [SerializeField] private float _bumpDuration = 0.14f;
         [SerializeField] private float _recoilDistance = 0.14f;
         [SerializeField] private float _recoilDuration = 0.12f;
+        [SerializeField] private float _moveVisualDuration = 0.18f;
+        [SerializeField] private TextMeshPro _topFaceText;
 
         private TurnManager _turnManager;
         private GridManager _gridManager;
@@ -39,6 +42,7 @@ namespace PocDiceTactics
         private Vector3 _moveTargetWorld;
         private Camera _mainCamera;
         private bool _isDead;
+        private bool _isMoveVisualPlaying;
 
         public Vector2Int GridPosition => _gridPosition;
         public Vector2Int Facing => _facing;
@@ -66,6 +70,7 @@ namespace PocDiceTactics
             EventBus.Instance.Subscribe<ClickEvent>(OnClick);
             EventBus.Instance.Subscribe<RightClickEvent>(OnRightClick);
             EventBus.Instance.Subscribe<PlayerDiedEvent>(OnPlayerDied);
+            EventBus.Instance.Subscribe<CylinderDryFiredEvent>(OnCylinderDryFired);
         }
 
         public void OnDisable()
@@ -84,6 +89,7 @@ namespace PocDiceTactics
             EventBus.Instance.Unsubscribe<ClickEvent>(OnClick);
             EventBus.Instance.Unsubscribe<RightClickEvent>(OnRightClick);
             EventBus.Instance.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
+            EventBus.Instance.Unsubscribe<CylinderDryFiredEvent>(OnCylinderDryFired);
         }
 
         public void Initialize(TurnManager turnManager, GridManager gridManager, CylinderSystem cylinderSystem, Vector2Int startCell)
@@ -99,11 +105,15 @@ namespace PocDiceTactics
             _isDead = false;
             SetDeathVisualAlpha(1f);
             transform.localScale = Vector3.one;
+            UpdateTopFaceText();
         }
 
         private void Update()
         {
-            transform.position = Vector3.Lerp(transform.position, _moveTargetWorld, Time.deltaTime * _moveLerpSpeed);
+            if (!_isMoveVisualPlaying)
+            {
+                transform.position = Vector3.Lerp(transform.position, _moveTargetWorld, Time.deltaTime * _moveLerpSpeed);
+            }
 
             if (_isDead) return;
             if (_turnManager == null || !_turnManager.IsPlayerTurn) return;
@@ -248,6 +258,7 @@ namespace PocDiceTactics
                 return;
             }
 
+            int nextTopFace = PredictTopFace(direction);
             _gridPosition = nextCell;
             _facing = direction;
             _moveTargetWorld = _gridManager.CellToWorld(_gridPosition);
@@ -258,7 +269,14 @@ namespace PocDiceTactics
 
             EventBus.Instance?.Publish(new PlayerMovedEvent { NewPosition = _gridPosition, Facing = _facing, TopFace = _topFace });
 
+            if (_turnManager == null)
+            {
+                Debug.LogError("[PlayerController] _turnManager is null");
+                return;
+            }
+
             _turnManager.EndPlayerTurn();
+            PlayMoveVisualSequence(direction, nextTopFace);
         }
 
         public void SetGridPosition(Vector2Int position)
@@ -274,6 +292,7 @@ namespace PocDiceTactics
             transform.position = _moveTargetWorld;
             _hasPendingMove = false;
             _pendingMoveDirection = Vector2Int.zero;
+            UpdateTopFaceText();
         }
 
         private void RollDice(Vector2Int direction)
@@ -352,7 +371,17 @@ namespace PocDiceTactics
             {
                 _cylinderSystem.Fire(_gridPosition, _facing);
                 PlayRecoil(_facing);
+                if (_turnManager == null)
+                {
+                    Debug.LogError("[PlayerController] _turnManager is null");
+                    return;
+                }
+
                 _turnManager.EndPlayerTurn();
+            }
+            else
+            {
+                Debug.LogError("[PlayerController] _cylinderSystem is null");
             }
         }
 
@@ -381,7 +410,11 @@ namespace PocDiceTactics
 
         private void TryFireAtMouseTarget()
         {
-            if (_cylinderSystem == null) return;
+            if (_cylinderSystem == null)
+            {
+                Debug.LogError("[PlayerController] _cylinderSystem is null");
+                return;
+            }
             if (!TryGetMouseTargetCell(out Vector2Int targetCell)) return;
 
             Vector2Int delta = targetCell - _gridPosition;
@@ -390,6 +423,13 @@ namespace PocDiceTactics
             _facing = delta;
             _cylinderSystem.Fire(_gridPosition, delta);
             PlayRecoil(delta);
+
+            if (_turnManager == null)
+            {
+                Debug.LogError("[PlayerController] _turnManager is null");
+                return;
+            }
+
             _turnManager.EndPlayerTurn();
         }
 
@@ -432,6 +472,20 @@ namespace PocDiceTactics
             StartCoroutine(PlayDeathEffectRoutine());
         }
 
+        private void OnCylinderDryFired(CylinderDryFiredEvent _)
+        {
+            if (_turnManager == null)
+            {
+                Debug.LogError("[PlayerController] _turnManager is null");
+                return;
+            }
+
+            if (_turnManager.CurrentPhase == TurnPhase.WaitingForVisual)
+            {
+                EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
+            }
+        }
+
         private IEnumerator PlayDeathEffectRoutine()
         {
             float elapsed = 0f;
@@ -461,6 +515,71 @@ namespace PocDiceTactics
                 c.a = alpha;
                 renderer.color = c;
             }
+        }
+
+        private void PlayMoveVisualSequence(Vector2Int direction, int nextTopFace)
+        {
+            transform.DOKill();
+            _isMoveVisualPlaying = true;
+
+            float duration = Mathf.Max(0.02f, _moveVisualDuration);
+            float half = duration * 0.5f;
+            bool isHorizontal = direction.x != 0;
+
+            Sequence sequence = DOTween.Sequence();
+            sequence.Join(transform.DOMove(_moveTargetWorld, duration).SetEase(Ease.OutQuad));
+            sequence.Join(DOVirtual.Float(0f, 1f, half, t =>
+            {
+                ApplyMoveScale(isHorizontal, t, true);
+            }));
+
+            sequence.AppendCallback(() =>
+            {
+                _topFace = nextTopFace;
+                UpdateTopFaceText();
+            });
+
+            sequence.Append(DOVirtual.Float(0f, 1f, half, t =>
+            {
+                ApplyMoveScale(isHorizontal, t, false);
+            }));
+
+            sequence.OnComplete(() =>
+            {
+                transform.position = _moveTargetWorld;
+                transform.localScale = Vector3.one;
+                _isMoveVisualPlaying = false;
+                EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
+            });
+        }
+
+        private void ApplyMoveScale(bool isHorizontal, float t, bool firstHalf)
+        {
+            float baseScale = firstHalf ? Mathf.Lerp(1f, 1.2f, t) : Mathf.Lerp(1.2f, 1f, t);
+            float flipScale = firstHalf ? Mathf.Lerp(1f, 0f, t) : Mathf.Lerp(0f, 1f, t);
+
+            Vector3 targetScale;
+            if (isHorizontal)
+            {
+                targetScale = new Vector3(flipScale, baseScale, 1f);
+            }
+            else
+            {
+                targetScale = new Vector3(baseScale, flipScale, 1f);
+            }
+
+            transform.localScale = targetScale;
+        }
+
+        private void UpdateTopFaceText()
+        {
+            if (_topFaceText == null)
+            {
+                Debug.LogError("[PlayerController] _topFaceText is null");
+                return;
+            }
+
+            _topFaceText.text = _topFace.ToString();
         }
     }
 }

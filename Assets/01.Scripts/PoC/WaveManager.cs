@@ -107,7 +107,7 @@ namespace PocDiceTactics
             _aliveEnemies.RemoveAll(enemy => enemy == null);
         }
 
-        public void ExecuteEnemyTelegraphs()
+        public void ExecuteEnemyTurnsAndTelegraphs()
         {
             Vector2Int playerPos = _turnManager.PlayerController.GridPosition;
 
@@ -120,7 +120,11 @@ namespace PocDiceTactics
                     continue;
                 }
 
-                enemy.ExecuteTelegraph(playerPos);
+                enemy.ExecuteAction(playerPos);
+                if (enemy != null)
+                {
+                    enemy.ExecuteTelegraph(_turnManager.PlayerController.GridPosition);
+                }
             }
 
             _aliveEnemies.RemoveAll(enemy => enemy == null);

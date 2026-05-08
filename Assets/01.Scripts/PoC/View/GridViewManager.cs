@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
+using DG.Tweening;
+using UnityEngine.Rendering;
 
 namespace PocDiceTactics
 {
@@ -10,6 +12,8 @@ namespace PocDiceTactics
     [DefaultExecutionOrder(-90)]
     public class GridViewManager : MonoBehaviour
     {
+        // Note: Ensure the particle prefab for _hitParticleKey is pre-created via PoolManager.CreatePool and has DespawnController component attached.
+
         [Header("References")]
         [SerializeField] private GridManager _gridManager;
         [SerializeField] private TileView _tilePrefab;
@@ -23,6 +27,9 @@ namespace PocDiceTactics
         [SerializeField] private float _laserFadeDuration = 0.12f;
         [SerializeField] private float _laserMinWidth = 0.03f;
         [SerializeField] private float _laserMaxWidth = 0.1f;
+        [SerializeField] private GameObject _damagePopupPrefab;
+        [SerializeField] private Transform _damagePopupCanvasRoot;
+        [SerializeField] private string _hitParticleKey = "PS_HitExplosion";
 
         private readonly Dictionary<Vector2Int, TileView> _tileMap = new Dictionary<Vector2Int, TileView>();
         private readonly HashSet<Vector2Int> _telegraphCells = new HashSet<Vector2Int>();
@@ -34,6 +41,9 @@ namespace PocDiceTactics
 
         private bool _hasGhostCell;
         private Vector2Int _ghostCell;
+        private bool _isShotVisualActive;
+        private bool _isShotPathRunning;
+        private bool _isLaserRunning;
 
         private void Start()
         {
@@ -52,6 +62,7 @@ namespace PocDiceTactics
             EventBus.Instance.Subscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
             EventBus.Instance.Subscribe<GameOverEvent>(OnGameOver);
             EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
+            EventBus.Instance.Subscribe<EnemyDamagedEvent>(OnEnemyDamaged);
         }
 
         private void OnDisable()
@@ -65,6 +76,7 @@ namespace PocDiceTactics
             EventBus.Instance.Unsubscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
             EventBus.Instance.Unsubscribe<GameOverEvent>(OnGameOver);
             EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
+            EventBus.Instance.Unsubscribe<EnemyDamagedEvent>(OnEnemyDamaged);
 
             if (_laserRoutine != null)
             {
@@ -76,6 +88,10 @@ namespace PocDiceTactics
             {
                 _laserLine.enabled = false;
             }
+
+            _isShotVisualActive = false;
+            _isShotPathRunning = false;
+            _isLaserRunning = false;
         }
 
         private void TryResolveReferences()
@@ -225,20 +241,41 @@ namespace PocDiceTactics
                 StopCoroutine(_shotRoutine);
             }
 
+            _isShotVisualActive = true;
+            _isShotPathRunning = true;
+            _isLaserRunning = false;
+
             PlayLaserEffect(e);
             _shotRoutine = StartCoroutine(PlayShotPathRoutine(e));
+        }
+
+        private void OnEnemyDamaged(EnemyDamagedEvent e)
+        {
+            if (_gridManager == null)
+            {
+                Debug.LogError("[GridViewManager] _gridManager is null");
+                return;
+            }
+
+            Vector3 worldPos = _gridManager.CellToWorld(e.EnemyPosition);
+            PlayEnemyHitPing(worldPos);
+            SpawnDamagePopup(worldPos, e.Damage);
         }
 
         private void PlayLaserEffect(ShotFiredEvent e)
         {
             if (_gridManager == null || _laserLine == null)
             {
+                _isLaserRunning = false;
+                TryCompleteShotVisualSequence();
                 return;
             }
 
             List<Vector2Int> shotPath = CalculateShotPath(e);
             if (shotPath.Count == 0)
             {
+                _isLaserRunning = false;
+                TryCompleteShotVisualSequence();
                 return;
             }
 
@@ -278,6 +315,7 @@ namespace PocDiceTactics
                 StopCoroutine(_laserRoutine);
             }
 
+            _isLaserRunning = true;
             _laserRoutine = StartCoroutine(PlayLaserTravelRoutine(worldPath, GetShotColor(e.BulletType)));
         }
 
@@ -433,6 +471,8 @@ namespace PocDiceTactics
             }
 
             _shotRoutine = null;
+            _isShotPathRunning = false;
+            TryCompleteShotVisualSequence();
         }
 
         private Vector2Int ReflectRicochetStep(Vector2Int origin, Vector2Int step)
@@ -553,6 +593,100 @@ namespace PocDiceTactics
             _laserLine.startWidth = _laserMinWidth;
             _laserLine.endWidth = _laserMinWidth;
             _laserRoutine = null;
+            _isLaserRunning = false;
+            TryCompleteShotVisualSequence();
+        }
+
+        private void TryCompleteShotVisualSequence()
+        {
+            if (!_isShotVisualActive)
+            {
+                return;
+            }
+
+            if (_isShotPathRunning || _isLaserRunning)
+            {
+                return;
+            }
+
+            _isShotVisualActive = false;
+            EventBus.Instance.Publish(new VisualSequenceCompleteEvent());
+        }
+
+        private void PlayEnemyHitPing(Vector3 worldPos)
+        {
+            if (string.IsNullOrEmpty(_hitParticleKey))
+            {
+                Debug.LogError("[GridViewManager] _hitParticleKey is null or empty");
+                return;
+            }
+
+            if (PoolManager.Instance == null)
+            {
+                Debug.LogError("[GridViewManager] PoolManager.Instance is null");
+                return;
+            }
+
+            GameObject particleObj = PoolManager.Instance.Spawn(_hitParticleKey, worldPos, Quaternion.identity);
+            if (particleObj == null)
+            {
+                Debug.LogError("[GridViewManager] Failed to spawn hit particle");
+                return;
+            }
+
+            // Temporarily set sorting order to very high value to ensure it's on top
+            Renderer[] renderers = particleObj.GetComponentsInChildren<Renderer>();
+            foreach (Renderer renderer in renderers)
+            {
+                renderer.sortingOrder = 1000;
+            }
+
+            SortingGroup sortingGroup = particleObj.GetComponent<SortingGroup>();
+            if (sortingGroup != null)
+            {
+                sortingGroup.sortingOrder = 1000;
+            }
+        }
+
+        private void SpawnDamagePopup(Vector3 worldPos, int damage)
+        {
+            if (_damagePopupPrefab == null)
+            {
+                Debug.LogError("[GridViewManager] _damagePopupPrefab is null");
+                return;
+            }
+
+            if (_damagePopupCanvasRoot == null)
+            {
+                Debug.LogError("[GridViewManager] _damagePopupCanvasRoot is null");
+                return;
+            }
+
+            if (PoolManager.Instance == null)
+            {
+                Debug.LogError("[GridViewManager] PoolManager.Instance is null");
+                return;
+            }
+
+            GameObject popupObject = PoolManager.Instance.Spawn(_damagePopupPrefab.name, worldPos, Quaternion.identity);
+            if (popupObject == null)
+            {
+                Debug.LogError("[GridViewManager] Failed to spawn damage popup");
+                return;
+            }
+
+            popupObject.transform.SetParent(_damagePopupCanvasRoot, false);
+            popupObject.transform.position = worldPos;
+
+            DamagePopup popup = popupObject.GetComponent<DamagePopup>();
+            if (popup == null)
+            {
+                Debug.LogError("[GridViewManager] DamagePopup component is missing");
+                PoolManager.Instance.Despawn(popupObject);
+                return;
+            }
+
+            popup.Play(damage);
         }
 
         private Vector3 EvaluatePointOnPath(List<Vector3> worldPathPoints, List<float> segmentLengths, float traveledDistance)

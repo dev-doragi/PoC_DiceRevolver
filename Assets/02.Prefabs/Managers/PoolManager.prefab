@@ -45,6 +45,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PoolManager
   _isDontDestroyOnLoad: 0
-  _poolRoot: {fileID: 0}
+  _poolRoot: {fileID: 5096500468142714893}
   _uiPoolRoot: {fileID: 0}
-  _globalPools: []
+  _globalPools:
+  - Prefab: {fileID: 3693038933114912621, guid: 4f80a491fabaccb4bb36deb2255c89b4, type: 3}
+    InitialSize: 36
+    MaxSize: 36
+  - Prefab: {fileID: 6493685332238967727, guid: ceae4089a1dd98d4bb01b853e74c16ff, type: 3}
+    InitialSize: 10
+    MaxSize: 20

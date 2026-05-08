@@ -202,6 +202,8 @@ public struct PhaseChangedEvent
     public PocDiceTactics.TurnPhase Phase;
 }
 
+public struct VisualSequenceCompleteEvent { }
+
 public struct EnemyTelegraphEvent
 {
     public Vector2Int EnemyPosition;

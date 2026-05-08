@@ -126,7 +126,9 @@ public class GameCsvLogger : MonoBehaviour
         EventBus.Instance.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
         EventBus.Instance.Subscribe<RoundStartedEvent>(OnRoundStarted);
         EventBus.Instance.Subscribe<RoundClearedEvent>(OnRoundCleared);
+        EventBus.Instance.Subscribe<EnemiesSpawnedEvent>(OnEnemiesSpawned);
         EventBus.Instance.Subscribe<PlayerMovedEvent>(OnPlayerMoved);
+        EventBus.Instance.Subscribe<EnemyMovedEvent>(OnEnemyMoved);
         EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
         EventBus.Instance.Subscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
         EventBus.Instance.Subscribe<EnemyDamagedEvent>(OnEnemyDamaged);
@@ -141,7 +143,9 @@ public class GameCsvLogger : MonoBehaviour
         EventBus.Instance.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
         EventBus.Instance.Unsubscribe<RoundStartedEvent>(OnRoundStarted);
         EventBus.Instance.Unsubscribe<RoundClearedEvent>(OnRoundCleared);
+        EventBus.Instance.Unsubscribe<EnemiesSpawnedEvent>(OnEnemiesSpawned);
         EventBus.Instance.Unsubscribe<PlayerMovedEvent>(OnPlayerMoved);
+        EventBus.Instance.Unsubscribe<EnemyMovedEvent>(OnEnemyMoved);
         EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
         EventBus.Instance.Unsubscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
         EventBus.Instance.Unsubscribe<EnemyDamagedEvent>(OnEnemyDamaged);
@@ -168,8 +172,9 @@ public class GameCsvLogger : MonoBehaviour
     {
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "PreviousPhase", _hasPreviousPhase ? _previousPhase.ToString() : "Unknown" },
-            { "NewPhase", e.Phase.ToString() }
+            { "previous_phase", _hasPreviousPhase ? _previousPhase.ToString() : "Unknown" },
+            { "new_phase", e.Phase.ToString() },
+            { "round_index", GameLogContext.CurrentRound }
         };
 
         _previousPhase = e.Phase;
@@ -182,7 +187,8 @@ public class GameCsvLogger : MonoBehaviour
     {
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "RoundIndex", e.RoundIndex }
+            { "round_index", e.RoundIndex },
+            { "phase", TurnManager.Instance != null ? TurnManager.Instance.CurrentPhase.ToString() : "Unknown" }
         };
 
         LogEvent(GameLogEventType.RoundStarted, default, default, -1, -1, metadata);
@@ -192,10 +198,22 @@ public class GameCsvLogger : MonoBehaviour
     {
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "RoundIndex", e.RoundIndex }
+            { "round_index", e.RoundIndex },
+            { "phase", TurnManager.Instance != null ? TurnManager.Instance.CurrentPhase.ToString() : "Unknown" }
         };
 
         LogEvent(GameLogEventType.RoundCleared, default, default, -1, -1, metadata);
+    }
+
+    private void OnEnemiesSpawned(EnemiesSpawnedEvent e)
+    {
+        Dictionary<string, object> metadata = new Dictionary<string, object>
+        {
+            { "spawn_count", e.SpawnPositions != null ? e.SpawnPositions.Count : 0 },
+            { "spawn_positions", SerializeVector2IntList(e.SpawnPositions) }
+        };
+
+        LogEvent(GameLogEventType.EnemySpawned, default, default, -1, -1, metadata);
     }
 
     private void OnPlayerMoved(PlayerMovedEvent e)
@@ -203,11 +221,28 @@ public class GameCsvLogger : MonoBehaviour
         EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "TopFace", e.TopFace },
-            { "Facing", SerializeVector2Int(e.Facing) }
+            { "top_face", e.TopFace },
+            { "facing", SerializeVector2Int(e.Facing) }
         };
 
         LogEvent(GameLogEventType.PlayerMoved, actor, default, e.NewPosition.x, e.NewPosition.y, metadata);
+    }
+
+    private void OnEnemyMoved(EnemyMovedEvent e)
+    {
+        EntitySnapshot actor = default;
+        if (GridManager.Instance != null)
+        {
+            MonoBehaviour enemy = GridManager.Instance.GetOccupant(e.EnemyPosition);
+            actor = BuildEntitySnapshot(enemy != null ? enemy.gameObject : null);
+        }
+
+        Dictionary<string, object> metadata = new Dictionary<string, object>
+        {
+            { "enemy_position", SerializeVector2Int(e.EnemyPosition) }
+        };
+
+        LogEvent(GameLogEventType.EnemyMoved, actor, default, e.EnemyPosition.x, e.EnemyPosition.y, metadata);
     }
 
     private void OnShotFired(ShotFiredEvent e)
@@ -215,8 +250,8 @@ public class GameCsvLogger : MonoBehaviour
         EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "BulletType", e.BulletType },
-            { "Direction", SerializeVector2Int(e.Direction) }
+            { "bullet_type", e.BulletType },
+            { "direction", SerializeVector2Int(e.Direction) }
         };
 
         LogEvent(GameLogEventType.ShotFired, actor, default, e.Origin.x, e.Origin.y, metadata);
@@ -233,8 +268,8 @@ public class GameCsvLogger : MonoBehaviour
 
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "IsActive", e.IsActive },
-            { "TargetCell", SerializeVector2Int(e.TargetCell) }
+            { "is_active", e.IsActive },
+            { "target_cell", SerializeVector2Int(e.TargetCell) }
         };
 
         LogEvent(GameLogEventType.EnemyTelegraph, actor, default, e.EnemyPosition.x, e.EnemyPosition.y, metadata);
@@ -251,7 +286,7 @@ public class GameCsvLogger : MonoBehaviour
 
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "Damage", e.Damage }
+            { "damage", e.Damage }
         };
 
         LogEvent(GameLogEventType.DamageDealt, default, target, e.EnemyPosition.x, e.EnemyPosition.y, metadata);
@@ -264,8 +299,8 @@ public class GameCsvLogger : MonoBehaviour
 
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "Damage", e.Damage },
-            { "RemainingHp", e.RemainingHp }
+            { "damage", e.Damage },
+            { "remaining_hp", e.RemainingHp }
         };
 
         LogEvent(GameLogEventType.DamageReceived, actor, default, playerPos.x, playerPos.y, metadata);
@@ -275,7 +310,7 @@ public class GameCsvLogger : MonoBehaviour
     {
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
-            { "EnemyPosition", SerializeVector2Int(e.EnemyPosition) }
+            { "enemy_position", SerializeVector2Int(e.EnemyPosition) }
         };
 
         LogEvent(GameLogEventType.EnemyDied, default, default, e.EnemyPosition.x, e.EnemyPosition.y, metadata);
@@ -379,6 +414,32 @@ public class GameCsvLogger : MonoBehaviour
     private static string SerializeVector2Int(Vector2Int value)
     {
         return $"({value.x},{value.y})";
+    }
+
+    private static string SerializeVector2IntList(List<Vector2Int> values)
+    {
+        if (values == null || values.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < values.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('|');
+            }
+
+            Vector2Int value = values[i];
+            builder.Append('(')
+                .Append(value.x)
+                .Append(',')
+                .Append(value.y)
+                .Append(')');
+        }
+
+        return builder.ToString();
     }
 
     private static string EscapeCsv(string value)

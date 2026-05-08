@@ -9,6 +9,7 @@ namespace PocDiceTactics
     {
         [SerializeField] private int _maxHp = 2;
         [SerializeField] private int _attackDamage = 1;
+        [SerializeField] private EnemyWorldUI _worldUI;
 
         private int _currentHp;
         private int _shackleRemainingTurns;
@@ -36,6 +37,11 @@ namespace PocDiceTactics
 
             _gridManager.RegisterOccupant(_gridPosition, this);
             transform.position = _gridManager.CellToWorld(_gridPosition);
+
+            if (_worldUI != null)
+            {
+                _worldUI.Initialize(_maxHp);
+            }
         }
 
         public void ExecuteTelegraph(Vector2Int playerPos)

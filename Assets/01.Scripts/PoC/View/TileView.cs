@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using DG.Tweening;
 
 namespace PocDiceTactics
 {
@@ -17,6 +18,8 @@ namespace PocDiceTactics
         [SerializeField] private SpriteRenderer _hoverRenderer;
         [SerializeField] private SpriteRenderer _shotFlashRenderer;
         [SerializeField] private TextMeshPro _ghostText;
+        [SerializeField] private SpriteRenderer _telegraphOutlineRenderer;
+        [SerializeField] private SpriteRenderer _dangerIconRenderer;
 
         [Header("Colors")]
         [SerializeField] private Color _floorColor = new Color(0.11f, 0.12f, 0.15f, 1f);
@@ -31,6 +34,7 @@ namespace PocDiceTactics
         [SerializeField] private float _telegraphPulseSpeed = 10f;
         [SerializeField] private float _telegraphShakeAmount = 0.03f;
         [SerializeField] private float _shotFlashDuration = 0.08f;
+        [SerializeField] private float _telegraphOutlinePulseSpeed = 11f;
 
         private Vector3 _originLocalPosition;
         private Vector2Int _cell;
@@ -108,6 +112,16 @@ namespace PocDiceTactics
                 _telegraphRenderer.color = _telegraphColor;
             }
 
+            if (_telegraphOutlineRenderer != null)
+            {
+                _telegraphOutlineRenderer.enabled = _isTelegraph;
+            }
+
+            if (_dangerIconRenderer != null)
+            {
+                _dangerIconRenderer.enabled = _isTelegraph;
+            }
+
             if (!_isTelegraph)
             {
                 transform.localPosition = _originLocalPosition;
@@ -171,6 +185,17 @@ namespace PocDiceTactics
                 _telegraphRenderer.color = _telegraphColor;
             }
 
+            if (_telegraphOutlineRenderer != null)
+            {
+                _telegraphOutlineRenderer.enabled = _isTelegraph;
+                _telegraphOutlineRenderer.color = _telegraphColor;
+            }
+
+            if (_dangerIconRenderer != null)
+            {
+                _dangerIconRenderer.enabled = _isTelegraph;
+            }
+
             if (_hoverRenderer != null)
             {
                 _hoverRenderer.enabled = _isHover;
@@ -218,6 +243,22 @@ namespace PocDiceTactics
             float shakeX = Mathf.Sin(Time.time * 34f) * _telegraphShakeAmount;
             float shakeY = Mathf.Cos(Time.time * 29f) * _telegraphShakeAmount;
             transform.localPosition = _originLocalPosition + new Vector3(shakeX, shakeY, 0f);
+
+            if (_telegraphOutlineRenderer != null)
+            {
+                float outlinePulse = 0.5f + 0.5f * Mathf.Sin(Time.time * _telegraphOutlinePulseSpeed);
+                Color outlineColor = _telegraphColor;
+                outlineColor.a = Mathf.Lerp(0.35f, 0.95f, outlinePulse);
+                _telegraphOutlineRenderer.color = outlineColor;
+            }
+
+            if (_dangerIconRenderer != null)
+            {
+                float iconPulse = 0.5f + 0.5f * Mathf.Sin(Time.time * (_telegraphPulseSpeed * 0.7f));
+                Color iconColor = _dangerIconRenderer.color;
+                iconColor.a = Mathf.Lerp(0.45f, 1f, iconPulse);
+                _dangerIconRenderer.color = iconColor;
+            }
         }
 
         private void ConfigureCollider()

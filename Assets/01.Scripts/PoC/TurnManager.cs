@@ -1,15 +1,12 @@
 using UnityEngine;
-using System.Collections;
 
 namespace PocDiceTactics
 {
     public enum TurnPhase
     {
-        PlayerInput,
-        ActionResolve,
-        EnemyTelegraph,
-        EnemyAction,
-        Cleanup,
+        PlayerTurn,
+        WaitingForVisual,
+        EnemyTurn,
         RoundTransition,
         GameOver
     }
@@ -28,15 +25,12 @@ namespace PocDiceTactics
         [Header("Player")]
         [SerializeField] private int _playerMaxHp = 10;
 
-        [Header("Turn Timing")]
-        [SerializeField] private float _phaseIntervalSeconds = 0.25f;
-        [SerializeField] private float _roundTransitionSeconds = 1f;
-
         private int _playerCurrentHp;
         private bool _isGameOver;
         private TurnPhase _currentPhase;
+        private bool _isWaitingForVisual;
 
-        public bool IsPlayerTurn => _currentPhase == TurnPhase.PlayerInput && !_isGameOver;
+        public bool IsPlayerTurn => _currentPhase == TurnPhase.PlayerTurn && !_isGameOver;
         public GridManager GridManager => _gridManager;
         public PlayerController PlayerController => _playerController;
         public TurnPhase CurrentPhase => _currentPhase;
@@ -59,61 +53,72 @@ namespace PocDiceTactics
 
             _waveManager.Initialize(this, _gridManager);
             _waveManager.SpawnNextWave();
-            _waveManager.ExecuteEnemyTelegraphs();
+            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
 
-            SetPhase(TurnPhase.PlayerInput);
+            SetPhase(TurnPhase.PlayerTurn);
             EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
+        }
+
+        private void OnEnable()
+        {
+            EventBus.Instance.Subscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
+        }
+
+        private void OnDisable()
+        {
+            if (EventBus.Instance == null)
+            {
+                return;
+            }
+
+            EventBus.Instance.Unsubscribe<VisualSequenceCompleteEvent>(OnVisualSequenceComplete);
         }
 
         public void EndPlayerTurn()
         {
             if (!IsPlayerTurn) return;
 
-            StartCoroutine(TurnLoopRoutine());
+            _isWaitingForVisual = true;
+            SetPhase(TurnPhase.WaitingForVisual);
         }
 
-        private IEnumerator TurnLoopRoutine()
+        private void OnVisualSequenceComplete(VisualSequenceCompleteEvent _)
         {
-            SetPhase(TurnPhase.ActionResolve);
-            yield return new WaitForSeconds(_phaseIntervalSeconds);
+            if (!_isWaitingForVisual || _isGameOver)
+            {
+                return;
+            }
 
-            SetPhase(TurnPhase.EnemyAction);
+            _isWaitingForVisual = false;
+            SetPhase(TurnPhase.EnemyTurn);
             EventBus.Instance?.Publish(new EnemyTurnStartedEvent());
-            _waveManager.ExecuteEnemyTurns();
-            yield return new WaitForSeconds(_phaseIntervalSeconds);
-
-            SetPhase(TurnPhase.EnemyTelegraph);
-            _waveManager.ExecuteEnemyTelegraphs();
-            yield return new WaitForSeconds(_phaseIntervalSeconds);
-
-            SetPhase(TurnPhase.Cleanup);
+            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
             _gridManager.UpdateOverheat();
-            yield return new WaitForSeconds(_phaseIntervalSeconds);
 
             if (_waveManager.AliveEnemyCount == 0)
             {
-                StartCoroutine(NextRoundRoutine());
+                StartNextRound();
             }
             else if (!_isGameOver)
             {
-                SetPhase(TurnPhase.PlayerInput);
+                SetPhase(TurnPhase.PlayerTurn);
                 EventBus.Instance?.Publish(new PlayerTurnStartedEvent());
             }
         }
 
-        private IEnumerator NextRoundRoutine()
+        private void StartNextRound()
         {
             SetPhase(TurnPhase.RoundTransition);
             EventBus.Instance?.Publish(new RoundClearedEvent { RoundIndex = _waveManager.RoundIndex });
-
-            yield return new WaitForSeconds(_roundTransitionSeconds);
 
             Vector2Int cachedPlayerPosition = _playerController.GridPosition;
             _gridManager.GenerateGrid(cachedPlayerPosition);
             _playerController.SetGridPosition(cachedPlayerPosition);
             _waveManager.SpawnNextWave();
 
-            SetPhase(TurnPhase.PlayerInput);
+            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
+
+            SetPhase(TurnPhase.PlayerTurn);
             EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = _waveManager.RoundIndex });
         }
 
