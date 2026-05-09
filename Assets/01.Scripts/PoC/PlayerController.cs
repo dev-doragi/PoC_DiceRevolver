@@ -276,6 +276,10 @@ namespace PocDiceTactics
             }
 
             Vector2Int nextCell = _gridPosition + direction;
+
+            // 이동 전에 "들어갈 칸"의 오버히트 상태를 먼저 확정
+            bool isEnteringOverheated = _gridManager.IsOverheated(nextCell);
+
             if (!_gridManager.TryMoveOccupant(_gridPosition, nextCell, this))
             {
                 PlayBump(direction);
@@ -288,8 +292,7 @@ namespace PocDiceTactics
             _moveTargetWorld = _gridManager.CellToWorld(_gridPosition);
 
             RollDice(direction);
-            bool isOverheated = _gridManager.IsOverheated(_gridPosition);
-            _cylinderSystem.OnPlayerMoved(_topFace, isOverheated);
+            _cylinderSystem.OnPlayerMoved(_topFace, isEnteringOverheated);
 
             EventBus.Instance?.Publish(new PlayerMovedEvent { NewPosition = _gridPosition, Facing = _facing, TopFace = _topFace });
 

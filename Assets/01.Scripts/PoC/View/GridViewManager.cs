@@ -240,14 +240,15 @@ namespace PocDiceTactics
             if (_shotRoutine != null)
             {
                 StopCoroutine(_shotRoutine);
+                _shotRoutine = null;
             }
 
             _isShotVisualActive = true;
-            _isShotPathRunning = true;
+            _isShotPathRunning = false; // 타일 플래시 루틴 비활성
             _isLaserRunning = false;
 
             PlayLaserEffect(e);
-            _shotRoutine = StartCoroutine(PlayShotPathRoutine(e));
+            // _shotRoutine = StartCoroutine(PlayShotPathRoutine(e)); // 제거
         }
 
         private void OnEnemyDamaged(EnemyDamagedEvent e)
@@ -272,6 +273,14 @@ namespace PocDiceTactics
                 return;
             }
 
+            if (_gridManager == null)
+            {
+                Debug.LogError("[GridViewManager] _gridManager is null");
+                _isLaserRunning = false;
+                TryCompleteShotVisualSequence();
+                return;
+            }
+
             if (e.PathPoints == null || e.PathPoints.Count == 0)
             {
                 _isLaserRunning = false;
@@ -285,7 +294,13 @@ namespace PocDiceTactics
             }
 
             _isLaserRunning = true;
-            List<Vector3> straightPath = SmoothLaserPath(e.PathPoints, e.BulletType);
+            List<Vector3> rawPath = new List<Vector3>(e.PathPoints.Count + 1)
+            {
+                _gridManager.CellToWorld(e.Origin)
+            };
+            rawPath.AddRange(e.PathPoints);
+
+            List<Vector3> straightPath = SmoothLaserPath(rawPath, e.BulletType);
             _laserRoutine = StartCoroutine(PlayLaserTravelRoutine(straightPath, GetShotColor(e.BulletType)));
         }
 
