@@ -2,18 +2,16 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-namespace PocDiceTactics
+/// <summary>
+/// 단일 탄환 UI 프리팹의 시각 정보를 갱신합니다. 아웃라인 이펙트를 활용합니다.
+/// </summary>
+public class BulletUI : MonoBehaviour
 {
-    /// <summary>
-    /// 단일 탄환 UI 프리팹의 시각 정보를 갱신합니다. 아웃라인 이펙트를 활용합니다.
-    /// </summary>
-    public class BulletUI : MonoBehaviour
-    {
-        [Header("Components")]
-        [SerializeField] private Image _iconImage;
-        [SerializeField] private Outline _iconOutline; // 추가된 아웃라인 컴포넌트
-        [SerializeField] private TextMeshProUGUI _numberText;
-        [SerializeField] private TextMeshProUGUI _nameText;
+    [Header("Components")]
+    [SerializeField] private Image _iconImage;
+    [SerializeField] private Outline _iconOutline; // 추가된 아웃라인 컴포넌트
+    [SerializeField] private TextMeshProUGUI _numberText;
+    [SerializeField] private TextMeshProUGUI _nameText;
 
         private Color _defaultIconColor = Color.white;
         private Color _defaultOutlineColor = Color.white;
@@ -41,7 +39,7 @@ namespace PocDiceTactics
             // 3. 큰 숫자 세팅
             if (_numberText != null)
             {
-                _numberText.text = data.BulletType.ToString();
+                _numberText.text = (data.BulletType + 1).ToString();
                 _numberText.color = Color.white;
             }
 
@@ -90,5 +88,12 @@ namespace PocDiceTactics
                 _nameText.gameObject.SetActive(!obscure);
             }
         }
-    }
+
+        public void SetNumberText(string text)
+        {
+            if (_numberText != null)
+            {
+                _numberText.text = text;
+            }
+        }
 }

@@ -1,7 +1,19 @@
-namespace PocDiceTactics.ModeSelection
+public struct GameModeChangedEvent
 {
-    public struct GameModeChangedEvent
+    public GameMode NewMode;
+}
+
+public class ReloadRequestedEvent
+{
+    public object NewMode { get; }
+
+    public ReloadRequestedEvent(GameMode mode)
     {
-        public GameMode NewMode;
+        NewMode = mode;
+    }
+
+    public ReloadRequestedEvent(DiceMode mode)
+    {
+        NewMode = mode;
     }
 }

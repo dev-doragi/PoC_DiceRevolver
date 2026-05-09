@@ -1,5 +1,3 @@
-using PocDiceTactics;
-
 public enum GameLogEventType
 {
     GameStarted,

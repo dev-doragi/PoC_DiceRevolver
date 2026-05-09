@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading;
-using PocDiceTactics;
 using UnityEngine;
 
 [DefaultExecutionOrder(-80)]
@@ -218,7 +217,9 @@ public class GameCsvLogger : MonoBehaviour
 
     private void OnPlayerMoved(PlayerMovedEvent e)
     {
-        EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
+        EntitySnapshot actor = BuildEntitySnapshot(PlayerManager.Instance != null && PlayerManager.Instance.PlayerTransform != null
+            ? PlayerManager.Instance.PlayerTransform.gameObject
+            : null);
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
             { "top_face", e.TopFace },
@@ -247,7 +248,9 @@ public class GameCsvLogger : MonoBehaviour
 
     private void OnShotFired(ShotFiredEvent e)
     {
-        EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
+        EntitySnapshot actor = BuildEntitySnapshot(PlayerManager.Instance != null && PlayerManager.Instance.PlayerTransform != null
+            ? PlayerManager.Instance.PlayerTransform.gameObject
+            : null);
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
             { "bullet_type", e.BulletType },
@@ -294,8 +297,10 @@ public class GameCsvLogger : MonoBehaviour
 
     private void OnPlayerDamaged(PlayerDamagedEvent e)
     {
-        EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
-        Vector2Int playerPos = PlayerController.Instance != null ? PlayerController.Instance.GridPosition : new Vector2Int(-1, -1);
+        EntitySnapshot actor = BuildEntitySnapshot(PlayerManager.Instance != null && PlayerManager.Instance.PlayerTransform != null
+            ? PlayerManager.Instance.PlayerTransform.gameObject
+            : null);
+        Vector2Int playerPos = TurnManager.Instance != null ? TurnManager.Instance.PlayerGridPosition : new Vector2Int(-1, -1);
 
         Dictionary<string, object> metadata = new Dictionary<string, object>
         {
@@ -318,7 +323,9 @@ public class GameCsvLogger : MonoBehaviour
 
     private void OnPlayerDied(PlayerDiedEvent e)
     {
-        EntitySnapshot actor = BuildEntitySnapshot(PlayerController.Instance != null ? PlayerController.Instance.gameObject : null);
+        EntitySnapshot actor = BuildEntitySnapshot(PlayerManager.Instance != null && PlayerManager.Instance.PlayerTransform != null
+            ? PlayerManager.Instance.PlayerTransform.gameObject
+            : null);
         LogEvent(GameLogEventType.PlayerDied, actor, default, e.Position.x, e.Position.y, null);
     }
 

@@ -1,12 +1,10 @@
 using UnityEngine;
 using TMPro;
 
-namespace PocDiceTactics
+public class PlayerHUD : MonoBehaviour
 {
-    public class PlayerHUD : MonoBehaviour
-    {
-        [SerializeField] private TextMeshProUGUI _apText;
-        [SerializeField] private TextMeshProUGUI _hpText;
+    [SerializeField] private TextMeshProUGUI _apText;
+    [SerializeField] private TextMeshProUGUI _hpText;
 
         private void OnEnable()
         {
@@ -24,7 +22,10 @@ namespace PocDiceTactics
         {
             if (_hpText != null)
             {
-                UpdateHPText(PlayerController.Instance.CurrentHP);
+                if (PlayerManager.Instance != null && PlayerManager.Instance.Status != null)
+                {
+                    UpdateHPText(PlayerManager.Instance.Status.CurrentHP);
+                }
             }
         }
 
@@ -94,5 +95,4 @@ namespace PocDiceTactics
 
             _hpText.text = $"HP: {new string('♥', Mathf.Max(0, remainingHp))}";
         }
-    }
 }

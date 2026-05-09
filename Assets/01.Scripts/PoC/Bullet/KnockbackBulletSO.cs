@@ -1,12 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace PocDiceTactics
+[CreateAssetMenu(fileName = "KnockbackBullet", menuName = "PoC/Bullets/Knockback")]
+public class KnockbackBulletSO : BulletLogicSO
 {
-    [CreateAssetMenu(fileName = "KnockbackBullet", menuName = "PoC/Bullets/Knockback")]
-    public class KnockbackBulletSO : BulletLogicSO
-    {
-        [SerializeField] private int _wallCollisionDamage = 1;
+    [SerializeField] private int _wallCollisionDamage = 1;
 
         public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
@@ -43,5 +41,4 @@ namespace PocDiceTactics
 
             return pathPoints;
         }
-    }
 }

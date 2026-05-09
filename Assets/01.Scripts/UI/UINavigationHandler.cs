@@ -1,15 +1,13 @@
 using UnityEngine;
 
-namespace PocDiceTactics
+/// <summary>
+/// UI 버튼과 SceneLoader(싱글톤) 사이를 연결하는 전용 핸들러입니다.
+/// 버튼 인스펙터에서 이 스크립트의 Public 메서드를 연결하세요.
+/// </summary>
+public class UINavigationHandler : MonoBehaviour
 {
-    /// <summary>
-    /// UI 버튼과 SceneLoader(싱글톤) 사이를 연결하는 전용 핸들러입니다.
-    /// 버튼 인스펙터에서 이 스크립트의 Public 메서드를 연결하세요.
-    /// </summary>
-    public class UINavigationHandler : MonoBehaviour
-    {
-        // 1. 다시 시작 버튼용
-        public void RequestReloadScene()
+    // 1. 다시 시작 버튼용
+    public void RequestReloadScene()
         {
             if (SceneLoader.Instance != null)
             {
@@ -48,5 +46,4 @@ namespace PocDiceTactics
             // EventBus를 통해 시스템에 알림
             EventBus.Instance?.Publish(new PausePressedEvent());
         }
-    }
 }

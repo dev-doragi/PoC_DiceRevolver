@@ -1,18 +1,16 @@
 using UnityEngine;
 using DG.Tweening; // DOTween 필수
 
-namespace PocDiceTactics
+/// <summary>
+/// 실린더 슬롯 전체의 UI 상태를 관리하고, 휠을 물리적으로 회전시킵니다.
+/// </summary>
+public class CylinderPanelUI : MonoBehaviour
 {
-    /// <summary>
-    /// 실린더 슬롯 전체의 UI 상태를 관리하고, 휠을 물리적으로 회전시킵니다.
-    /// </summary>
-    public class CylinderPanelUI : MonoBehaviour
-    {
-        [SerializeField] private RectTransform _cylinderWheel; // 6개 슬롯을 담고 있는 회전축
-        [SerializeField] private RectTransform[] _slotAnchors = new RectTransform[6];
-        [SerializeField] private BulletUIData[] _bulletDataConfigs = new BulletUIData[6];
-        [SerializeField] private GameObject _bulletUIPrefab;
-        [SerializeField] private string _bulletPrefabKey = "BulletUI_Default";
+    [SerializeField] private RectTransform _cylinderWheel; // 6개 슬롯을 담고 있는 회전축
+    [SerializeField] private RectTransform[] _slotAnchors = new RectTransform[6];
+    [SerializeField] private BulletUIData[] _bulletDataConfigs = new BulletUIData[6];
+    [SerializeField] private GameObject _bulletUIPrefab;
+    [SerializeField] private string _bulletPrefabKey = "BulletUI_Default";
 
         [Header("Rotation Settings")]
         [SerializeField] private float _rotationDuration = 0.3f;
@@ -40,7 +38,7 @@ namespace PocDiceTactics
         private void RefreshUI(CylinderStateChangedEvent evt)
         {
             if (!EnsurePoolReady()) return;
-            bool isRouletteMode = GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette;
+            bool isRouletteMode = DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.RussianRoulette;
 
             // 1. 탄환 UI 갱신 (기존과 동일)
             for (int i = 0; i < 6; i++)
@@ -182,5 +180,4 @@ namespace PocDiceTactics
                 rect.localEulerAngles = new Vector3(0f, 0f, inverseZ);
             }
         }
-    }
 }

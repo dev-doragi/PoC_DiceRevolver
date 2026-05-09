@@ -1,17 +1,27 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace PocDiceTactics
+/// <summary>
+/// 그리드 맵과 장애물, 타일 과열 상태를 관리합니다.
+/// </summary>
+public class GridManager : Singleton<GridManager>
 {
-    /// <summary>
-    /// 그리드 맵과 장애물, 타일 과열 상태를 관리합니다.
-    /// </summary>
-    public class GridManager : Singleton<GridManager>
+    public struct LaserLogicResult
     {
-        [Header("Grid")]
-        [SerializeField] private Vector2Int _gridSize = new Vector2Int(5, 5);
-        [SerializeField] private float _cellSize = 1f;
-        [SerializeField] private Vector2 _worldOrigin = Vector2.zero;
+        public List<Vector2Int> PassedTiles;
+        public Vector2Int HitWallTile;
+        public bool HitWall;
+    }
+
+    public struct RicochetLogicResult
+    {
+        public List<LaserLogicResult> Segments;
+    }
+
+    [Header("Grid")]
+    [SerializeField] private Vector2Int _gridSize = new Vector2Int(5, 5);
+    [SerializeField] private float _cellSize = 1f;
+    [SerializeField] private Vector2 _worldOrigin = Vector2.zero;
 
         [Header("Wall Spawn")]
         [SerializeField] private int _wallCount = 4;
@@ -25,6 +35,8 @@ namespace PocDiceTactics
         private readonly Dictionary<Vector2Int, MonoBehaviour> _occupants = new Dictionary<Vector2Int, MonoBehaviour>();
 
         public Vector2Int GridSize => _gridSize;
+        public float CellSize => _cellSize;
+        public Vector2 WorldOrigin => _worldOrigin;
 
         protected override void Awake()
         {
@@ -316,6 +328,80 @@ namespace PocDiceTactics
             }
         }
 
+        public LaserLogicResult CalculateLaserPath(Vector2Int startTile, Vector2 direction, int maxRange)
+        {
+            if (direction.sqrMagnitude < 0.000001f)
+            {
+                Debug.LogError("[GridManager] direction is zero in CalculateLaserPath");
+                throw new System.InvalidOperationException("[GridManager] direction is zero in CalculateLaserPath");
+            }
+
+            LaserLogicResult result = new LaserLogicResult
+            {
+                PassedTiles = new List<Vector2Int>(),
+                HitWallTile = Vector2Int.zero,
+                HitWall = false
+            };
+
+            int safeMaxRange = Mathf.Max(1, maxRange);
+            Vector2 normalized = direction.normalized;
+
+            int stepX = normalized.x > 0f ? 1 : (normalized.x < 0f ? -1 : 0);
+            int stepY = normalized.y > 0f ? 1 : (normalized.y < 0f ? -1 : 0);
+
+            float tDeltaX = stepX == 0 ? float.PositiveInfinity : Mathf.Abs(1f / normalized.x);
+            float tDeltaY = stepY == 0 ? float.PositiveInfinity : Mathf.Abs(1f / normalized.y);
+
+            float tMaxX = stepX == 0 ? float.PositiveInfinity : 0.5f / Mathf.Abs(normalized.x);
+            float tMaxY = stepY == 0 ? float.PositiveInfinity : 0.5f / Mathf.Abs(normalized.y);
+
+            int x = startTile.x;
+            int y = startTile.y;
+
+            for (int i = 0; i < safeMaxRange; i++)
+            {
+                if (tMaxX < tMaxY)
+                {
+                    x += stepX;
+                    tMaxX += tDeltaX;
+                }
+                else
+                {
+                    y += stepY;
+                    tMaxY += tDeltaY;
+                }
+
+                Vector2Int tile = new Vector2Int(x, y);
+                if (!IsInside(tile))
+                {
+                    break;
+                }
+
+                if (IsWall(tile))
+                {
+                    result.HitWall = true;
+                    result.HitWallTile = tile;
+                    return result;
+                }
+
+                result.PassedTiles.Add(tile);
+            }
+
+            return result;
+        }
+
+        public LaserLogicResult CalculateLaserLogic(Vector2Int origin, Vector2Int direction)
+        {
+            if (direction == Vector2Int.zero)
+            {
+                Debug.LogError("[GridManager] direction is zero in CalculateLaserLogic");
+                return default;
+            }
+
+            int maxRange = Mathf.Max(_gridSize.x, _gridSize.y) * 2;
+            return CalculateLaserPath(origin, new Vector2(direction.x, direction.y), maxRange);
+        }
+
         public Vector3 CellToWorld(Vector2Int cell)
         {
             float centerOffsetX = (_gridSize.x - 1) * 0.5f;
@@ -334,5 +420,4 @@ namespace PocDiceTactics
             int y = Mathf.RoundToInt(((worldPosition.y - _worldOrigin.y) / safeCellSize) + centerOffsetY);
             return new Vector2Int(x, y);
         }
-    }
 }

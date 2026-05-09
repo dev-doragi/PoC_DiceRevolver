@@ -1,121 +1,185 @@
 using UnityEngine;
 
-namespace PocDiceTactics
+public enum TurnPhase
 {
-    public enum TurnPhase
+    PlayerTurn,
+    WaitingForVisual,
+    EnemyTurn,
+    RoundTransition,
+    GameOver
+}
+
+/// <summary>
+/// 플레이어와 적의 턴을 관리하는 상태 머신입니다.
+/// </summary>
+public class TurnManager : Singleton<TurnManager>
+{
+    [Header("References")]
+    [SerializeField] private GridManager _gridManager;
+    [SerializeField] private CylinderSystem _cylinderSystem;
+    [SerializeField] private WaveManager _waveManager;
+
+    private bool _isGameOver;
+    private TurnPhase _currentPhase;
+    private bool _isWaitingForVisual;
+
+    public bool IsPlayerTurn => _currentPhase == TurnPhase.PlayerTurn && !_isGameOver;
+    public GridManager GridManager => _gridManager;
+    public TurnPhase CurrentPhase => _currentPhase;
+    public int RoundIndex => _waveManager != null ? _waveManager.RoundIndex : 0;
+    public Vector2Int PlayerGridPosition => PlayerManager.Instance != null && PlayerManager.Instance.PlayerTransform != null
+        ? GridManager.WorldToCell(PlayerManager.Instance.PlayerTransform.position)
+        : Vector2Int.zero;
+
+    protected override void Awake()
     {
-        PlayerTurn,
-        WaitingForVisual,
-        EnemyTurn,
-        RoundTransition,
-        GameOver
+        _isDontDestroyOnLoad = false; // Scene scope
+        base.Awake();
     }
 
-    /// <summary>
-    /// 플레이어와 적의 턴을 관리하는 상태 머신입니다.
-    /// </summary>
-    public class TurnManager : Singleton<TurnManager>
+    protected override void OnBootstrap()
     {
-        [Header("References")]
-        [SerializeField] private GridManager _gridManager;
-        [SerializeField] private PlayerController _playerController;
-        [SerializeField] private CylinderSystem _cylinderSystem;
-        [SerializeField] private WaveManager _waveManager;
-
-        private bool _isGameOver;
-        private TurnPhase _currentPhase;
-        private bool _isWaitingForVisual;
-
-        public bool IsPlayerTurn => _currentPhase == TurnPhase.PlayerTurn && !_isGameOver;
-        public GridManager GridManager => _gridManager;
-        public PlayerController PlayerController => _playerController;
-        public TurnPhase CurrentPhase => _currentPhase;
-        public int RoundIndex => _waveManager != null ? _waveManager.RoundIndex : 0;
-
-        protected override void Awake()
+        if (PlayerManager.Instance == null)
         {
-            _isDontDestroyOnLoad = false; // Scene scope
-            base.Awake();
+            Debug.LogError("[TurnManager] PlayerManager.Instance is null");
+            throw new System.InvalidOperationException("[TurnManager] PlayerManager.Instance is null");
         }
 
-        protected override void OnBootstrap()
+        PlayerManager.Instance.BootstrapIfNeeded();
+
+        if (_gridManager == null)
         {
-            _gridManager.GenerateGrid(); // Grid already generated in GridManager.OnBootstrap(), but ensure here
-
-            Vector2Int playerCell = _gridManager.GetRandomEmptyCell();
-            _playerController.Initialize(this, _gridManager, _cylinderSystem, playerCell);
-            _cylinderSystem.Initialize(this, _gridManager);
-
-            _waveManager.Initialize(this, _gridManager);
-            _waveManager.SpawnNextWave();
-            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
-
-            SetPhase(TurnPhase.PlayerTurn);
-            EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
+            Debug.LogError("[TurnManager] _gridManager is null");
+            throw new System.InvalidOperationException("[TurnManager] _gridManager is null");
         }
 
-        public void EndPlayerTurn()
+        if (_waveManager == null)
         {
-            if (!IsPlayerTurn) return;
-
-            _isWaitingForVisual = true;
-            SetPhase(TurnPhase.WaitingForVisual);
+            Debug.LogError("[TurnManager] _waveManager is null");
+            throw new System.InvalidOperationException("[TurnManager] _waveManager is null");
         }
 
-        public void OnVisualsCompleted()
+        if (_cylinderSystem == null)
         {
-            if (_isGameOver)
-            {
-                return;
-            }
-
-            if (_currentPhase != TurnPhase.WaitingForVisual || !_isWaitingForVisual)
-            {
-                return;
-            }
-
-            if (_playerController == null)
-            {
-                Debug.LogError("[TurnManager] _playerController is null");
-                return;
-            }
-
-            _isWaitingForVisual = false;
-            SetPhase(TurnPhase.EnemyTurn);
-            EventBus.Instance?.Publish(new EnemyTurnStartedEvent());
-            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
-
-            if (_waveManager.AliveEnemyCount == 0)
-            {
-                StartNextRound();
-            }
-            else if (!_isGameOver)
-            {
-                SetPhase(TurnPhase.PlayerTurn);
-                EventBus.Instance?.Publish(new PlayerTurnStartedEvent());
-            }
+            Debug.LogError("[TurnManager] _cylinderSystem is null");
+            throw new System.InvalidOperationException("[TurnManager] _cylinderSystem is null");
         }
 
-        private void StartNextRound()
+        _waveManager.Initialize(this, _gridManager);
+        _gridManager.GenerateGrid();
+
+        Vector2Int playerCell = _gridManager.GetRandomEmptyCell();
+        PlayerManager.Instance.InitializeCombatContext(this, _gridManager, _cylinderSystem, playerCell);
+        _cylinderSystem.Initialize(this, _gridManager);
+
+        _waveManager.SpawnNextWave();
+
+        SetPhase(TurnPhase.PlayerTurn);
+        EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
+    }
+
+    private void OnEnable()
+    {
+        if (EventBus.Instance == null)
         {
-            SetPhase(TurnPhase.RoundTransition);
-            EventBus.Instance?.Publish(new RoundClearedEvent { RoundIndex = _waveManager.RoundIndex });
-
-            Vector2Int cachedPlayerPosition = _playerController.GridPosition;
-            _gridManager.GenerateGrid(cachedPlayerPosition);
-            _playerController.SetGridPosition(cachedPlayerPosition);
-            _waveManager.SpawnNextWave();
-
-            _waveManager.ExecuteEnemyTurnsAndTelegraphs();
-
-            SetPhase(TurnPhase.PlayerTurn);
-            EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = _waveManager.RoundIndex });
+            Debug.LogError("[TurnManager] EventBus.Instance is null");
+            return;
         }
 
-        private void SetPhase(TurnPhase phase)
+        EventBus.Instance.Subscribe<PlayerTurnEndedEvent>(OnPlayerTurnEnded);
+        EventBus.Instance.Subscribe<OnVisualsCompletedEvent>(OnVisualsCompletedEvent);
+        EventBus.Instance.Subscribe<EnemyTurnCompletedEvent>(OnEnemyTurnCompleted);
+        EventBus.Instance.Subscribe<AllEnemiesDefeatedEvent>(OnAllEnemiesDefeated);
+    }
+
+    private void OnDisable()
+    {
+        if (EventBus.Instance == null)
         {
-            _currentPhase = phase;
-            EventBus.Instance?.Publish(new PhaseChangedEvent { Phase = _currentPhase });
+            return;
         }
+
+        EventBus.Instance.Unsubscribe<PlayerTurnEndedEvent>(OnPlayerTurnEnded);
+        EventBus.Instance.Unsubscribe<OnVisualsCompletedEvent>(OnVisualsCompletedEvent);
+        EventBus.Instance.Unsubscribe<EnemyTurnCompletedEvent>(OnEnemyTurnCompleted);
+        EventBus.Instance.Unsubscribe<AllEnemiesDefeatedEvent>(OnAllEnemiesDefeated);
+    }
+
+    private void OnPlayerTurnEnded(PlayerTurnEndedEvent _)
+    {
+        EndPlayerTurn();
+    }
+
+    private void OnVisualsCompletedEvent(OnVisualsCompletedEvent _)
+    {
+        OnVisualsCompleted();
+    }
+
+    public void EndPlayerTurn()
+    {
+        if (!IsPlayerTurn) return;
+
+        _isWaitingForVisual = true;
+        SetPhase(TurnPhase.WaitingForVisual);
+    }
+
+    public void OnVisualsCompleted()
+    {
+        if (_isGameOver)
+        {
+            return;
+        }
+
+        if (_currentPhase != TurnPhase.WaitingForVisual || !_isWaitingForVisual)
+        {
+            return;
+        }
+
+        _isWaitingForVisual = false;
+        SetPhase(TurnPhase.EnemyTurn);
+        EventBus.Instance?.Publish(new StartEnemyTurnEvent());
+    }
+
+    private void StartNextRound()
+    {
+        SetPhase(TurnPhase.RoundTransition);
+        EventBus.Instance?.Publish(new RoundClearedEvent { RoundIndex = _waveManager.RoundIndex });
+
+        Vector2Int cachedPlayerPosition = PlayerGridPosition;
+        _gridManager.GenerateGrid(cachedPlayerPosition);
+        if (PlayerManager.Instance != null)
+        {
+            PlayerManager.Instance.InitializeCombatContext(this, _gridManager, _cylinderSystem, cachedPlayerPosition);
+        }
+        _waveManager.SpawnNextWave();
+        if (PlayerManager.Instance != null && PlayerManager.Instance.Status != null)
+        {
+            PlayerManager.Instance.Status.ResetAP();
+        }
+
+        SetPhase(TurnPhase.PlayerTurn);
+        EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = _waveManager.RoundIndex });
+    }
+
+    private void SetPhase(TurnPhase phase)
+    {
+        _currentPhase = phase;
+        EventBus.Instance?.Publish(new PhaseChangedEvent { Phase = _currentPhase });
+    }
+
+    private void OnEnemyTurnCompleted(EnemyTurnCompletedEvent e)
+    {
+        if (_isGameOver)
+        {
+            return;
+        }
+
+        SetPhase(TurnPhase.PlayerTurn);
+        EventBus.Instance?.Publish(new PlayerTurnStartedEvent());
+    }
+
+    private void OnAllEnemiesDefeated(AllEnemiesDefeatedEvent e)
+    {
+        StartNextRound();
     }
 }

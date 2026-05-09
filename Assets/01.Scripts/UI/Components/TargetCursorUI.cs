@@ -1,11 +1,9 @@
 using UnityEngine;
 
-namespace PocDiceTactics
+public class TargetCursorUI : MonoBehaviour
 {
-    public class TargetCursorUI : MonoBehaviour
-    {
-        [SerializeField] private float _followSpeed = 20f;
-        [SerializeField] private CanvasGroup _canvasGroup;
+    [SerializeField] private float _followSpeed = 20f;
+    [SerializeField] private CanvasGroup _canvasGroup;
 
         private Camera _mainCamera;
 
@@ -59,5 +57,4 @@ namespace PocDiceTactics
             Vector3 targetWorld = grid.CellToWorld(cell);
             transform.position = Vector3.Lerp(transform.position, targetWorld, Time.deltaTime * _followSpeed);
         }
-    }
 }

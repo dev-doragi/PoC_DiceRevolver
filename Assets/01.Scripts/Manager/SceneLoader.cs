@@ -29,6 +29,27 @@ public class SceneLoader : Singleton<SceneLoader>
         }
     }
 
+    private void OnEnable()
+    {
+        if (EventBus.Instance != null)
+        {
+            EventBus.Instance.Subscribe<ReloadRequestedEvent>(OnReloadRequested);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (EventBus.Instance != null)
+        {
+            EventBus.Instance.Unsubscribe<ReloadRequestedEvent>(OnReloadRequested);
+        }
+    }
+
+    private void OnReloadRequested(ReloadRequestedEvent evt)
+    {
+        ReloadCurrentScene();
+    }
+
     private void PreserveBGMForNextSceneLoad()
     {
         if (SoundManager.Instance != null)

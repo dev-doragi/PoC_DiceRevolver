@@ -2,15 +2,13 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 
-namespace PocDiceTactics
+public class DamagePopup : MonoBehaviour
 {
-    public class DamagePopup : MonoBehaviour
-    {
-        [SerializeField] private TextMeshProUGUI _damageText;
-        [SerializeField] private CanvasGroup _canvasGroup;
-        [SerializeField] private RectTransform _rectTransform;
-        [SerializeField] private float _riseDistance = 48f;
-        [SerializeField] private float _duration = 0.45f;
+    [SerializeField] private TextMeshProUGUI _damageText;
+    [SerializeField] private CanvasGroup _canvasGroup;
+    [SerializeField] private RectTransform _rectTransform;
+    [SerializeField] private float _riseDistance = 48f;
+    [SerializeField] private float _duration = 0.45f;
 
         private Vector2 _originAnchoredPosition;
 
@@ -105,5 +103,4 @@ namespace PocDiceTactics
                 PoolManager.Instance.Despawn(gameObject);
             });
         }
-    }
 }

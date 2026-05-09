@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 매니저 인스턴스 보장과 초기화 순서를 중앙에서 제어합니다.
 /// </summary>
-[DefaultExecutionOrder(-500)]
+[DefaultExecutionOrder(-200)]
 public class Bootstrapper : MonoBehaviour
 {
     [Header("Strict Validation")]
@@ -24,13 +24,13 @@ public class Bootstrapper : MonoBehaviour
     [SerializeField] private PoolManager _poolManagerPrefab;
 
     [Header("PoC Managers (Non-DDOL)")]
-    [SerializeField] private PocDiceTactics.ModeSelection.GameModeManager _uiGameModeManagerPrefab;
-    [SerializeField] private PocDiceTactics.GameModeManager _pocGameModeManagerPrefab;
-    [SerializeField] private PocDiceTactics.GridManager _pocGridManagerPrefab;
-    [SerializeField] private PocDiceTactics.WaveManager _pocWaveManagerPrefab;
-    [SerializeField] private PocDiceTactics.PlayerController _pocPlayerControllerPrefab;
-    [SerializeField] private PocDiceTactics.CylinderSystem _pocCylinderSystemPrefab;
-    [SerializeField] private PocDiceTactics.TurnManager _pocTurnManagerPrefab;
+    [SerializeField] private GameModeManager _uiGameModeManagerPrefab;
+    [SerializeField] private DiceModeManager _pocGameModeManagerPrefab;
+    [SerializeField] private PlayerManager _playerManagerPrefab;
+    [SerializeField] private GridManager _pocGridManagerPrefab;
+    [SerializeField] private WaveManager _pocWaveManagerPrefab;
+    [SerializeField] private CylinderSystem _pocCylinderSystemPrefab;
+    [SerializeField] private TurnManager _pocTurnManagerPrefab;
 
     private void Awake()
     {
@@ -49,6 +49,7 @@ public class Bootstrapper : MonoBehaviour
         EnsureInstance(_poolManagerPrefab);
 
         EnsureModeManagerInstances();
+        EnsureInstance(_playerManagerPrefab);
 
         // PoC scope - no prefab instantiation needed, use Instance
         // PoC managers are instantiated via their prefabs in scene or manually
@@ -61,35 +62,36 @@ public class Bootstrapper : MonoBehaviour
 
     private void InitializeLogic()
     {
-        // Phase 1: CoreData
-        if (InputReader.Instance != null) InputReader.Instance.BootstrapIfNeeded();
-        if (SceneLoader.Instance != null) SceneLoader.Instance.BootstrapIfNeeded();
+        BootstrapOrThrow(InputReader.Instance, nameof(InputReader));
+        BootstrapOrThrow(SceneLoader.Instance, nameof(SceneLoader));
 
-        // Phase 2: CoreState
-        if (GameManager.Instance != null) GameManager.Instance.BootstrapIfNeeded();
-        if (GameFlowManager.Instance != null) GameFlowManager.Instance.BootstrapIfNeeded();
+        BootstrapOrThrow(GameManager.Instance, nameof(GameManager));
+        BootstrapOrThrow(GameFlowManager.Instance, nameof(GameFlowManager));
 
-        // Phase 3: World
-        if (CameraManager.Instance != null) CameraManager.Instance.BootstrapIfNeeded();
-        if (PauseManager.Instance != null) PauseManager.Instance.BootstrapIfNeeded();
+        BootstrapOrThrow(CameraManager.Instance, nameof(CameraManager));
+        BootstrapOrThrow(PauseManager.Instance, nameof(PauseManager));
 
-        // Phase 4: Presentation
-        if (PoolManager.Instance != null) PoolManager.Instance.BootstrapIfNeeded();
-        if (UIManager.Instance != null) UIManager.Instance.BootstrapIfNeeded();
-        if (SoundManager.Instance != null) SoundManager.Instance.BootstrapIfNeeded();
+        BootstrapOrThrow(PoolManager.Instance, nameof(PoolManager));
+        BootstrapOrThrow(UIManager.Instance, nameof(UIManager));
+        BootstrapOrThrow(SoundManager.Instance, nameof(SoundManager));
 
-        // Phase 5: PoC Managers
-        PocDiceTactics.ModeSelection.GameModeManager uiGameModeManager = FindAnyObjectByType<PocDiceTactics.ModeSelection.GameModeManager>();
-        if (uiGameModeManager != null) uiGameModeManager.BootstrapIfNeeded();
+        GameModeManager uiGameModeManager = FindAnyObjectByType<GameModeManager>();
+        if (uiGameModeManager != null)
+        {
+            BootstrapOrThrow(uiGameModeManager, nameof(GameModeManager));
+        }
 
-        PocDiceTactics.GameModeManager pocGameModeManager = FindAnyObjectByType<PocDiceTactics.GameModeManager>();
-        if (pocGameModeManager != null) pocGameModeManager.BootstrapIfNeeded();
+        DiceModeManager pocGameModeManager = FindAnyObjectByType<DiceModeManager>();
+        if (pocGameModeManager != null)
+        {
+            BootstrapOrThrow(pocGameModeManager, nameof(DiceModeManager));
+        }
 
-        if (PocDiceTactics.GridManager.Instance != null) PocDiceTactics.GridManager.Instance.BootstrapIfNeeded();
-        if (PocDiceTactics.WaveManager.Instance != null) PocDiceTactics.WaveManager.Instance.BootstrapIfNeeded();
-        if (PocDiceTactics.PlayerController.Instance != null) PocDiceTactics.PlayerController.Instance.BootstrapIfNeeded();
-        if (PocDiceTactics.CylinderSystem.Instance != null) PocDiceTactics.CylinderSystem.Instance.BootstrapIfNeeded();
-        if (PocDiceTactics.TurnManager.Instance != null) PocDiceTactics.TurnManager.Instance.BootstrapIfNeeded();
+        BootstrapOrThrow(PlayerManager.Instance, nameof(PlayerManager));
+        BootstrapOrThrow(GridManager.Instance, nameof(GridManager));
+        BootstrapOrThrow(WaveManager.Instance, nameof(WaveManager));
+        BootstrapOrThrow(TurnManager.Instance, nameof(TurnManager));
+        BootstrapOrThrow(CylinderSystem.Instance, nameof(CylinderSystem));
 
         Debug.Log("<color=green>[Bootstrapper]</color> manager initialization completed.");
     }
@@ -129,6 +131,29 @@ public class Bootstrapper : MonoBehaviour
     {
         EnsureInstanceWithFallback(_uiGameModeManagerPrefab, "GameModeManager_UI");
         EnsureInstanceWithFallback(_pocGameModeManagerPrefab, "GameModeManager_PoC");
+    }
+
+    private void BootstrapOrThrow<T>(T manager, string managerName) where T : MonoBehaviour
+    {
+        if (manager == null)
+        {
+            Debug.LogError($"[Bootstrapper] {managerName} instance is null");
+            throw new System.InvalidOperationException($"[Bootstrapper] {managerName} instance is null");
+        }
+
+        if (manager is not ISingletonBootstrap bootstrap)
+        {
+            Debug.LogError($"[Bootstrapper] {managerName} does not implement ISingletonBootstrap");
+            throw new System.InvalidOperationException($"[Bootstrapper] {managerName} does not implement ISingletonBootstrap");
+        }
+
+        bootstrap.BootstrapIfNeeded();
+
+        if (!bootstrap.IsBootstrapped)
+        {
+            Debug.LogError($"[Bootstrapper] {managerName} bootstrap failed");
+            throw new System.InvalidOperationException($"[Bootstrapper] {managerName} bootstrap failed");
+        }
     }
 
     private void EnsureInstanceWithFallback<T>(T prefab, string fallbackObjectName) where T : MonoBehaviour

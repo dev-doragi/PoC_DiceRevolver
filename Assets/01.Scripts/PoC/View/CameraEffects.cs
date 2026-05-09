@@ -2,19 +2,17 @@ using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace PocDiceTactics
+public class CameraEffects : MonoBehaviour
 {
-    public class CameraEffects : MonoBehaviour
-    {
-        [SerializeField] private Image _flashOverlay;
-        [SerializeField] private float _shotShakeDuration = 0.12f;
-        [SerializeField] private float _shotShakeStrength = 0.15f;
-        [SerializeField] private int _shotShakeVibrato = 20;
-        [SerializeField] private float _damageShakeDuration = 0.18f;
-        [SerializeField] private float _damageShakeStrength = 0.22f;
-        [SerializeField] private int _damageShakeVibrato = 28;
-        [SerializeField] private float _flashDuration = 0.16f;
-        [SerializeField] private float _flashAlpha = 0.25f;
+    [SerializeField] private Image _flashOverlay;
+    [SerializeField] private float _shotShakeDuration = 0.12f;
+    [SerializeField] private float _shotShakeStrength = 0.15f;
+    [SerializeField] private int _shotShakeVibrato = 20;
+    [SerializeField] private float _damageShakeDuration = 0.18f;
+    [SerializeField] private float _damageShakeStrength = 0.22f;
+    [SerializeField] private int _damageShakeVibrato = 28;
+    [SerializeField] private float _flashDuration = 0.16f;
+    [SerializeField] private float _flashAlpha = 0.25f;
 
         private Camera _mainCamera;
 
@@ -97,5 +95,4 @@ namespace PocDiceTactics
             _flashOverlay.color = baseColor;
             _flashOverlay.DOFade(0f, _flashDuration).SetEase(Ease.OutQuad);
         }
-    }
 }

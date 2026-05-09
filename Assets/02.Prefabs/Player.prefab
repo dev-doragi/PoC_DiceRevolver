@@ -191,6 +191,9 @@ GameObject:
   m_Component:
   - component: {fileID: 8688164549823944976}
   - component: {fileID: 3165083991980546126}
+  - component: {fileID: 2453179808363939116}
+  - component: {fileID: 2061775525139515263}
+  - component: {fileID: 8509585516260370612}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -227,7 +230,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67b22f6902fd3ff40a4a5d1ef35a672c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.PlayerController
-  _isDontDestroyOnLoad: 0
   _moveLerpSpeed: 16
   _tileLayerMask:
     serializedVersion: 2
@@ -241,6 +243,43 @@ MonoBehaviour:
   _recoilDuration: 0.12
   _moveVisualDuration: 0.18
   _topFaceText: {fileID: 4734929085266067561}
+--- !u!114 &2453179808363939116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8255942388971451665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cc27add097cbb242813ef7859eb68f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementSystem
+--- !u!114 &2061775525139515263
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8255942388971451665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bf7d64a3d405fc479be45eb89174c64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStatusSystem
+  _maxHp: 10
+--- !u!114 &8509585516260370612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8255942388971451665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d098fed9cee27c04693f363346eb174b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCombatSystem
 --- !u!1 &9134982473695363512
 GameObject:
   m_ObjectHideFlags: 0

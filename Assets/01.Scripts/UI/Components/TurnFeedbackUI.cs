@@ -2,17 +2,15 @@ using UnityEngine;
 using TMPro;
 using DG.Tweening;
 
-namespace PocDiceTactics
+public class TurnFeedbackUI : MonoBehaviour
 {
-    public class TurnFeedbackUI : MonoBehaviour
-    {
-        [SerializeField] private TextMeshProUGUI _turnText;
-        [SerializeField] private CanvasGroup _canvasGroup;
-        [SerializeField] private float _fadeInDuration = 0.15f;
-        [SerializeField] private float _holdDuration = 0.35f;
-        [SerializeField] private float _fadeOutDuration = 0.2f;
-        [SerializeField] private float _startScale = 0.85f;
-        [SerializeField] private float _endScale = 1.05f;
+    [SerializeField] private TextMeshProUGUI _turnText;
+    [SerializeField] private CanvasGroup _canvasGroup;
+    [SerializeField] private float _fadeInDuration = 0.15f;
+    [SerializeField] private float _holdDuration = 0.35f;
+    [SerializeField] private float _fadeOutDuration = 0.2f;
+    [SerializeField] private float _startScale = 0.85f;
+    [SerializeField] private float _endScale = 1.05f;
 
         private Sequence _sequence;
 
@@ -76,5 +74,4 @@ namespace PocDiceTactics
             _sequence.Append(_canvasGroup.DOFade(0f, _fadeOutDuration));
             _sequence.Join(_turnText.rectTransform.DOScale(1f, _fadeOutDuration));
         }
-    }
 }

@@ -1,12 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace PocDiceTactics
+public class EnemyWorldUI : MonoBehaviour
 {
-    public class EnemyWorldUI : MonoBehaviour
-    {
-        [SerializeField] private EnemyController _owner;
-        [SerializeField] private Slider _hpSlider;
+    [SerializeField] private EnemyController _owner;
+    [SerializeField] private Slider _hpSlider;
 
         private int _maxHp;
         private int _currentHp;
@@ -91,5 +89,4 @@ namespace PocDiceTactics
 
             _hpSlider.value = 0f;
         }
-    }
 }

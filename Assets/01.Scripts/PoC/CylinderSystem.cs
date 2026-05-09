@@ -1,15 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace PocDiceTactics
+/// <summary>
+/// 주사위 굴림, 실린더 회전, 사격 로직이 포함된 플레이어 시스템입니다.
+/// </summary>
+public class CylinderSystem : Singleton<CylinderSystem>
 {
-    /// <summary>
-    /// 주사위 굴림, 실린더 회전, 사격 로직이 포함된 플레이어 시스템입니다.
-    /// </summary>
-    public class CylinderSystem : Singleton<CylinderSystem>
-    {
-        [Header("Bullet Database")]
-        [SerializeField] private BulletLogicSO[] _bulletDatabase = new BulletLogicSO[6];
+    [Header("Bullet Database")]
+    [SerializeField] private BulletLogicSO[] _bulletDatabase = new BulletLogicSO[6];
 
         private readonly int?[] _chambers = new int?[6];
         private int _firePointer = 0;
@@ -40,7 +38,7 @@ namespace PocDiceTactics
 
         public void OnPlayerMoved(int topFace, bool isOverheated)
         {
-            if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.BlackjackCylinder)
+            if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.BlackjackCylinder)
             {
                 if (isOverheated)
                 {
@@ -53,19 +51,19 @@ namespace PocDiceTactics
                     _blackjackSum = 0;
                     _chambers[_firePointer] = null;
 
-                    if (PlayerController.Instance != null)
+                    if (PlayerManager.Instance != null && PlayerManager.Instance.Status != null)
                     {
-                        PlayerController.Instance.TakeDamage(1);
-                        PlayerController.Instance.ForceEndTurnFromOverload();
+                        PlayerManager.Instance.Status.TakeDamage(1);
+                        PlayerManager.Instance.Status.ForceEndTurnFromOverload();
 
-                        if (PoolManager.Instance != null)
+                        if (PoolManager.Instance != null && PlayerManager.Instance.PlayerTransform != null)
                         {
-                            PoolManager.Instance.Spawn("Explosion", PlayerController.Instance.transform.position, Quaternion.identity);
+                            PoolManager.Instance.Spawn("Explosion", PlayerManager.Instance.PlayerTransform.position, Quaternion.identity);
                         }
                     }
                     else
                     {
-                        Debug.LogError("[CylinderSystem] PlayerController.Instance is null");
+                        Debug.LogError("[CylinderSystem] PlayerManager.Instance or Status is null");
                     }
                 }
                 else
@@ -81,7 +79,7 @@ namespace PocDiceTactics
 
             if (!isOverheated && !_chambers[_loadPointer].HasValue)
             {
-                if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
+                if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
                 {
                     if (Random.Range(0, 6) == 0)
                     {
@@ -99,39 +97,56 @@ namespace PocDiceTactics
             PublishStateSnapshot(); // 행동 완료 후 스냅샷 전달
         }
 
-        public void Fire(Vector2Int origin, Vector2Int direction)
+        public bool Fire(Vector2Int origin, Vector2Int direction, out ShotFiredEvent shotEvent)
         {
+            shotEvent = default;
             int? loadedBullet = _chambers[_firePointer];
-            List<Vector3> pathPoints = new List<Vector3>();
+            GridManager.LaserLogicResult logicResult = default;
+            List<Vector3> shotPathPoints = null;
+
+            if (direction == Vector2Int.zero)
+            {
+                Debug.LogError("[CylinderSystem] direction is zero in Fire");
+                return false;
+            }
 
             if (loadedBullet.HasValue)
             {
                 int bulletType = loadedBullet.Value;
                 if (bulletType >= 0 && bulletType < _bulletDatabase.Length && _bulletDatabase[bulletType] != null)
                 {
+                    if (_gridManager == null)
+                    {
+                        Debug.LogError("[CylinderSystem] _gridManager is null");
+                        return false;
+                    }
+
+                    logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+
                     int damageMultiplier = 1;
-                    if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
+                    if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
                     {
                         damageMultiplier = 10;
                     }
 
-                    pathPoints = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, damageMultiplier);
+                    shotPathPoints = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, damageMultiplier);
                 }
                 else
                 {
                     Debug.LogError($"[CylinderSystem] Invalid bullet type or missing SO: {bulletType}");
                 }
 
-                EventBus.Instance?.Publish(new ShotFiredEvent
+                shotEvent = new ShotFiredEvent
                 {
                     Origin = origin,
                     Direction = direction,
                     BulletType = bulletType,
-                    PathPoints = pathPoints
-                });
+                    LogicResult = logicResult,
+                    PathPoints = shotPathPoints
+                };
                 _chambers[_firePointer] = null;
 
-                if (GameModeManager.Instance != null && GameModeManager.Instance.CurrentMode == DiceMode.BlackjackCylinder)
+                if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
                 {
                     _blackjackSum = 0;
                 }
@@ -146,6 +161,94 @@ namespace PocDiceTactics
 
             RotateCylinder();
             PublishStateSnapshot(); // 행동 완료 후 스냅샷 전달
+            return loadedBullet.HasValue;
+        }
+
+        public bool TryGetRicochetPreviewPath(Vector2Int origin, Vector2Int direction, out GridManager.LaserLogicResult logicResult)
+        {
+            logicResult = default;
+
+            if (direction == Vector2Int.zero)
+            {
+                Debug.LogError("[CylinderSystem] direction is zero in TryGetRicochetPreviewPath");
+                return false;
+            }
+
+            int? loadedType = _chambers[_firePointer];
+            if (!loadedType.HasValue)
+            {
+                return false;
+            }
+
+            int bulletType = loadedType.Value;
+            if (bulletType < 0 || bulletType >= _bulletDatabase.Length)
+            {
+                Debug.LogError($"[CylinderSystem] Invalid bullet type: {bulletType}");
+                return false;
+            }
+
+            BulletLogicSO bulletLogic = _bulletDatabase[bulletType];
+            RicochetBulletSO ricochetBullet = bulletLogic as RicochetBulletSO;
+            if (ricochetBullet == null)
+            {
+                return false;
+            }
+
+            if (_gridManager == null)
+            {
+                Debug.LogError("[CylinderSystem] _gridManager is null");
+                return false;
+            }
+
+            logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+            return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
+        }
+
+        public bool TryGetCurrentBulletPreviewPath(Vector2Int origin, Vector2Int direction, out GridManager.LaserLogicResult logicResult)
+        {
+            logicResult = default;
+
+            if (_gridManager == null)
+            {
+                Debug.LogError("[CylinderSystem] _gridManager is null");
+                return false;
+            }
+
+            if (direction == Vector2Int.zero)
+            {
+                Debug.LogError("[CylinderSystem] direction is zero in TryGetCurrentBulletPreviewPath");
+                return false;
+            }
+
+            int? loadedType = _chambers[_firePointer];
+            if (!loadedType.HasValue)
+            {
+                return false;
+            }
+
+            int bulletType = loadedType.Value;
+            if (bulletType < 0 || bulletType >= _bulletDatabase.Length)
+            {
+                Debug.LogError($"[CylinderSystem] Invalid bullet type: {bulletType}");
+                return false;
+            }
+
+            BulletLogicSO bulletLogic = _bulletDatabase[bulletType];
+            if (bulletLogic == null)
+            {
+                Debug.LogError($"[CylinderSystem] Missing bullet logic SO: {bulletType}");
+                return false;
+            }
+
+            RicochetBulletSO ricochetBullet = bulletLogic as RicochetBulletSO;
+            if (ricochetBullet != null)
+            {
+                logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+                return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
+            }
+
+            logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+            return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
         }
 
         public bool TryPeekAndFire(Vector2Int origin, Vector2Int direction)
@@ -163,12 +266,20 @@ namespace PocDiceTactics
                 return false;
             }
 
+            if (_gridManager == null)
+            {
+                Debug.LogError("[CylinderSystem] _gridManager is null");
+                return false;
+            }
+
             List<Vector3> path = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, 1);
+            GridManager.LaserLogicResult logicResult = _gridManager.CalculateLaserLogic(origin, direction);
             EventBus.Instance?.Publish(new ShotFiredEvent
             {
                 Origin = origin,
                 Direction = direction,
                 BulletType = bulletType,
+                LogicResult = logicResult,
                 PathPoints = path
             });
 
@@ -210,5 +321,5 @@ namespace PocDiceTactics
                 LoadPointer = _loadPointer
             });
         }
-    }
+
 }

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 씬/상태/입력/오디오 흐름에서 사용하는 공통 이벤트 정의입니다.
+/// ???�태/?�력/?�디???�름?�서 ?�용?�는 공통 ?�벤???�의?�니??
 /// </summary>
 public struct StageLoadedEvent
 {
@@ -148,6 +148,16 @@ public struct ShotFiredEvent
     public Vector2Int Origin;
     public Vector2Int Direction;
     public int BulletType;
+    public GridManager.LaserLogicResult LogicResult;
+    public System.Collections.Generic.List<Vector3> PathPoints;
+}
+
+public struct RicochetTrajectoryPreviewEvent
+{
+    public bool IsActive;                   
+    public Vector2Int Origin;
+    public Vector2Int Direction;
+    public GridManager.LaserLogicResult LogicResult;
     public System.Collections.Generic.List<Vector3> PathPoints;
 }
 
@@ -204,7 +214,7 @@ public struct MoveGhostEvent
 
 public struct PhaseChangedEvent
 {
-    public PocDiceTactics.TurnPhase Phase;
+    public TurnPhase Phase;
 }
 
 public struct EnemyTelegraphEvent
@@ -221,9 +231,17 @@ public struct CylinderStateChangedEvent
     public int LoadPointer;
 }
 
-// PoC 입력 이벤트
+// PoC ?�력 ?�벤??
 public struct MoveUpPressedEvent { }
 public struct MoveDownPressedEvent { }
 public struct MoveLeftPressedEvent { }
 public struct MoveRightPressedEvent { }
 public struct FirePressedEvent { }
+
+
+public struct PlayerTurnEndedEvent { }
+public struct OnVisualsCompletedEvent { }
+public struct StartEnemyTurnEvent { }
+public struct EnemyTurnCompletedEvent { }
+public struct AllEnemiesDefeatedEvent { }
+

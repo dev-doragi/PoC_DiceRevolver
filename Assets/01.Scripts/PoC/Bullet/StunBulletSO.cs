@@ -1,12 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace PocDiceTactics
+[CreateAssetMenu(fileName = "StunBullet", menuName = "PoC/Bullets/Stun")]
+public class StunBulletSO : BulletLogicSO
 {
-    [CreateAssetMenu(fileName = "StunBullet", menuName = "PoC/Bullets/Stun")]
-    public class StunBulletSO : BulletLogicSO
-    {
-        [SerializeField] private int _stunTurns = 2;
+    [SerializeField] private int _stunTurns = 2;
 
         public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
         {
@@ -22,5 +20,4 @@ namespace PocDiceTactics
 
             return pathPoints;
         }
-    }
 }

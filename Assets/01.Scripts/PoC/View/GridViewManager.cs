@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
@@ -27,6 +28,9 @@ namespace PocDiceTactics
         [SerializeField] private float _laserFadeDuration = 0.12f;
         [SerializeField] private float _laserMinWidth = 0.03f;
         [SerializeField] private float _laserMaxWidth = 0.1f;
+        [SerializeField] private LineRenderer _ricochetPreviewLine;
+        [SerializeField] private float _instantShotHoldDuration = 0.01f;
+        [SerializeField] private float _previewLineWidth = 0.045f;
         [SerializeField] private GameObject _damagePopupPrefab;
         [SerializeField] private Transform _damagePopupCanvasRoot;
         [SerializeField] private string _hitParticleKey = "Explosion";
@@ -38,6 +42,7 @@ namespace PocDiceTactics
 
         private bool _hasHoverCell;
         private Vector2Int _hoverCell;
+        private readonly HashSet<Vector2Int> _turnStartHighlightCells = new HashSet<Vector2Int>();
 
         private bool _hasGhostCell;
         private Vector2Int _ghostCell;
@@ -53,7 +58,9 @@ namespace PocDiceTactics
 
         private void OnEnable()
         {
+            TryResolveReferences();
             EventBus.Instance.Subscribe<RoundStartedEvent>(OnRoundStarted);
+            EventBus.Instance.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
             EventBus.Instance.Subscribe<TileOverheatedEvent>(OnTileOverheated);
             EventBus.Instance.Subscribe<TileCooledEvent>(OnTileCooled);
             EventBus.Instance.Subscribe<TileHoverEvent>(OnTileHover);
@@ -68,6 +75,7 @@ namespace PocDiceTactics
         private void OnDisable()
         {
             EventBus.Instance.Unsubscribe<RoundStartedEvent>(OnRoundStarted);
+            EventBus.Instance.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
             EventBus.Instance.Unsubscribe<TileOverheatedEvent>(OnTileOverheated);
             EventBus.Instance.Unsubscribe<TileCooledEvent>(OnTileCooled);
             EventBus.Instance.Unsubscribe<TileHoverEvent>(OnTileHover);
@@ -92,6 +100,8 @@ namespace PocDiceTactics
             _isShotVisualActive = false;
             _isShotPathRunning = false;
             _isLaserRunning = false;
+            ClearTurnStartHighlights();
+            HideRicochetPreview();
         }
 
         private void TryResolveReferences()
@@ -126,6 +136,7 @@ namespace PocDiceTactics
             _telegraphCells.Clear();
             _hasHoverCell = false;
             _hasGhostCell = false;
+            _turnStartHighlightCells.Clear();
         }
 
         private void ClearGridViews()
@@ -162,6 +173,12 @@ namespace PocDiceTactics
         private void OnTileHover(TileHoverEvent e)
         {
             ClearHoverOnly();
+
+            if (e.PredictedTopFace <= 0)
+            {
+                return;
+            }
+
             if (_tileMap.TryGetValue(e.Cell, out TileView tile))
             {
                 tile.SetHover(true, e.PredictedTopFace, false);
@@ -183,6 +200,20 @@ namespace PocDiceTactics
 
         private void OnPlayerMoved(PlayerMovedEvent _)
         {
+            ClearHoverOnly();
+            ClearGhostOnly();
+            ShowTurnStartHighlights();
+        }
+
+        private void OnPhaseChanged(PhaseChangedEvent e)
+        {
+            if (e.Phase == TurnPhase.PlayerTurn)
+            {
+                ShowTurnStartHighlights();
+                return;
+            }
+
+            ClearTurnStartHighlights();
             ClearHoverOnly();
             ClearGhostOnly();
         }
@@ -233,6 +264,56 @@ namespace PocDiceTactics
             _telegraphCells.Clear();
             _hasHoverCell = false;
             _hasGhostCell = false;
+            ClearTurnStartHighlights();
+            HideRicochetPreview();
+        }
+
+        private void ShowTurnStartHighlights()
+        {
+            ClearTurnStartHighlights();
+
+            if (_gridManager == null)
+            {
+                Debug.LogError("[GridViewManager] _gridManager is null");
+                return;
+            }
+
+            if (PlayerManager.Instance == null || PlayerManager.Instance.PlayerTransform == null)
+            {
+                Debug.LogError("[GridViewManager] PlayerManager.Instance or PlayerTransform is null");
+                return;
+            }
+
+            Vector2Int playerCell = _gridManager.WorldToCell(PlayerManager.Instance.PlayerTransform.position);
+            Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+            for (int i = 0; i < directions.Length; i++)
+            {
+                Vector2Int targetCell = playerCell + directions[i];
+                if (!_gridManager.IsWalkable(targetCell))
+                {
+                    continue;
+                }
+
+                if (_tileMap.TryGetValue(targetCell, out TileView tile))
+                {
+                    tile.SetHover(true, 0, false);
+                    _turnStartHighlightCells.Add(targetCell);
+                }
+            }
+        }
+
+        private void ClearTurnStartHighlights()
+        {
+            foreach (Vector2Int cell in _turnStartHighlightCells)
+            {
+                if (_tileMap.TryGetValue(cell, out TileView tile))
+                {
+                    tile.SetHover(false, 0, false);
+                }
+            }
+
+            _turnStartHighlightCells.Clear();
         }
 
         private void OnShotFired(ShotFiredEvent e)
@@ -242,6 +323,8 @@ namespace PocDiceTactics
                 StopCoroutine(_shotRoutine);
                 _shotRoutine = null;
             }
+
+            HideRicochetPreview();
 
             _isShotVisualActive = true;
             _isShotPathRunning = false; // 타일 플래시 루틴 비활성
@@ -541,6 +624,7 @@ namespace PocDiceTactics
             }
 
             _isShotVisualActive = false;
+            EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
         }
 
         private void PlayEnemyHitPing(Vector3 worldPos)
@@ -666,9 +750,11 @@ namespace PocDiceTactics
             if (!_hasHoverCell) return;
             if (_tileMap.TryGetValue(_hoverCell, out TileView tile))
             {
-                tile.SetHover(false, 0, false);
+                bool keepTurnStartHighlight = _turnStartHighlightCells.Contains(_hoverCell);
+                tile.SetHover(keepTurnStartHighlight, 0, false);
             }
             _hasHoverCell = false;
+            HideRicochetPreview();
         }
 
         private void ClearGhostOnly()
@@ -676,9 +762,195 @@ namespace PocDiceTactics
             if (!_hasGhostCell) return;
             if (_tileMap.TryGetValue(_ghostCell, out TileView tile))
             {
-                tile.SetHover(false, 0, false);
+                bool keepTurnStartHighlight = _turnStartHighlightCells.Contains(_ghostCell);
+                tile.SetHover(keepTurnStartHighlight, 0, false);
             }
             _hasGhostCell = false;
+        }
+
+        private void OnRicochetTrajectoryPreview(RicochetTrajectoryPreviewEvent e)
+        {
+            RenderPreciseLaserPreview(e);
+        }
+
+        private void RenderPreciseLaserPreview(RicochetTrajectoryPreviewEvent e)
+        {
+            if (_ricochetPreviewLine == null)
+            {
+                return;
+            }
+
+            if (!e.IsActive)
+            {
+                HideRicochetPreview();
+                return;
+            }
+
+            if (GridManager.Instance == null)
+            {
+                Debug.LogError("[GridViewManager] GridManager.Instance is null");
+                HideRicochetPreview();
+                return;
+            }
+
+            if (e.Direction == Vector2Int.zero)
+            {
+                Debug.LogError("[GridViewManager] direction is zero in RenderPreciseLaserPreview");
+                HideRicochetPreview();
+                return;
+            }
+
+            GridManager.LaserLogicResult logicResult = e.LogicResult;
+            if (logicResult.PassedTiles == null)
+            {
+                logicResult = GridManager.Instance.CalculateLaserLogic(e.Origin, e.Direction);
+            }
+
+            List<Vector3> points = BuildPreciseLaserPoints(GridManager.Instance, e.Origin, e.Direction, logicResult);
+            if (points == null || points.Count < 2)
+            {
+                HideRicochetPreview();
+                return;
+            }
+
+            _ricochetPreviewLine.enabled = true;
+            _ricochetPreviewLine.positionCount = points.Count;
+            for (int i = 0; i < points.Count; i++)
+            {
+                _ricochetPreviewLine.SetPosition(i, points[i]);
+            }
+
+            _ricochetPreviewLine.startWidth = _previewLineWidth;
+            _ricochetPreviewLine.endWidth = _previewLineWidth;
+            Color previewColor = new Color(1f, 0.25f, 0.25f, 0.65f);
+            _ricochetPreviewLine.startColor = previewColor;
+            _ricochetPreviewLine.endColor = previewColor;
+        }
+
+        private List<Vector3> BuildPreciseLaserPoints(GridManager gridManager, Vector2Int origin, Vector2Int direction, GridManager.LaserLogicResult logicResult)
+        {
+            if (gridManager == null)
+            {
+                Debug.LogError("[GridViewManager] gridManager is null in BuildPreciseLaserPoints");
+                return null;
+            }
+
+            Vector3 startWorld = gridManager.CellToWorld(origin);
+            Vector3 endWorld = startWorld;
+
+            if (logicResult.HitWall)
+            {
+                if (!TryGetPreciseWallHitPoint(gridManager, startWorld, direction, logicResult.HitWallTile, out endWorld))
+                {
+                    endWorld = gridManager.CellToWorld(logicResult.HitWallTile);
+                }
+            }
+            else if (logicResult.PassedTiles != null && logicResult.PassedTiles.Count > 0)
+            {
+                endWorld = gridManager.CellToWorld(logicResult.PassedTiles[logicResult.PassedTiles.Count - 1]);
+            }
+            else
+            {
+                Vector2 dir = new Vector2(direction.x, direction.y).normalized;
+                endWorld = startWorld + new Vector3(dir.x, dir.y, 0f) * Mathf.Max(0.01f, gridManager.CellSize * 0.5f);
+            }
+
+            return new List<Vector3> { startWorld, endWorld };
+        }
+
+        private bool TryGetPreciseWallHitPoint(GridManager gridManager, Vector3 rayStartWorld, Vector2Int direction, Vector2Int wallCell, out Vector3 hitPoint)
+        {
+            hitPoint = rayStartWorld;
+
+            Vector2 rayStart = new Vector2(rayStartWorld.x, rayStartWorld.y);
+            Vector2 rayDirection = new Vector2(direction.x, direction.y).normalized;
+            if (rayDirection.sqrMagnitude < 0.000001f)
+            {
+                return false;
+            }
+
+            Vector3 wallCenterWorld = gridManager.CellToWorld(wallCell);
+            float halfCell = Mathf.Max(0.0001f, gridManager.CellSize * 0.5f);
+
+            Vector2 bottomLeft = new Vector2(wallCenterWorld.x - halfCell, wallCenterWorld.y - halfCell);
+            Vector2 bottomRight = new Vector2(wallCenterWorld.x + halfCell, wallCenterWorld.y - halfCell);
+            Vector2 topRight = new Vector2(wallCenterWorld.x + halfCell, wallCenterWorld.y + halfCell);
+            Vector2 topLeft = new Vector2(wallCenterWorld.x - halfCell, wallCenterWorld.y + halfCell);
+
+            Vector2[] edgeStarts = { bottomLeft, bottomRight, topRight, topLeft };
+            Vector2[] edgeEnds = { bottomRight, topRight, topLeft, bottomLeft };
+
+            bool found = false;
+            float nearestDistanceSqr = float.PositiveInfinity;
+            Vector2 nearestPoint = Vector2.zero;
+
+            for (int i = 0; i < edgeStarts.Length; i++)
+            {
+                if (!TryIntersectRaySegment(rayStart, rayDirection, edgeStarts[i], edgeEnds[i], out Vector2 intersection))
+                {
+                    continue;
+                }
+
+                float distanceSqr = (intersection - rayStart).sqrMagnitude;
+                if (distanceSqr < nearestDistanceSqr)
+                {
+                    nearestDistanceSqr = distanceSqr;
+                    nearestPoint = intersection;
+                    found = true;
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            hitPoint = new Vector3(nearestPoint.x, nearestPoint.y, rayStartWorld.z);
+            return true;
+        }
+
+        private bool TryIntersectRaySegment(Vector2 rayStart, Vector2 rayDirection, Vector2 segmentStart, Vector2 segmentEnd, out Vector2 intersection)
+        {
+            intersection = Vector2.zero;
+
+            Vector2 r = rayDirection;
+            Vector2 s = segmentEnd - segmentStart;
+            float denominator = Cross2D(r, s);
+            if (Mathf.Abs(denominator) < 0.000001f)
+            {
+                return false;
+            }
+
+            Vector2 qp = segmentStart - rayStart;
+            float t = Cross2D(qp, s) / denominator;
+            float u = Cross2D(qp, r) / denominator;
+            if (t < 0f || u < 0f || u > 1f)
+            {
+                return false;
+            }
+
+            intersection = rayStart + (r * t);
+            return true;
+        }
+
+        private float Cross2D(Vector2 a, Vector2 b)
+        {
+            return (a.x * b.y) - (a.y * b.x);
+        }
+
+        private void HideRicochetPreview()
+        {
+            if (_ricochetPreviewLine == null)
+            {
+                return;
+            }
+
+            if (_laserLine != null && ReferenceEquals(_ricochetPreviewLine, _laserLine))
+            {
+                return;
+            }
+
+            _ricochetPreviewLine.positionCount = 0;
         }
 
     }

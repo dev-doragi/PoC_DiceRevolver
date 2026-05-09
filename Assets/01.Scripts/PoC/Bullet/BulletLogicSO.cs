@@ -1,14 +1,12 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace PocDiceTactics
+public abstract class BulletLogicSO : ScriptableObject
 {
-    public abstract class BulletLogicSO : ScriptableObject
-    {
-        public string BulletName;
-        public int Damage;
-        public Sprite Icon;
-        public Color ThemeColor = Color.white;
+    public string BulletName;
+    public int Damage;
+    public Sprite Icon;
+    public Color ThemeColor = Color.white;
 
         public abstract List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1);
 
@@ -42,5 +40,4 @@ namespace PocDiceTactics
 
             return null;
         }
-    }
 }

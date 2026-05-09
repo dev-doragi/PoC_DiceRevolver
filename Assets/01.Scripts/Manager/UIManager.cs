@@ -224,5 +224,15 @@ public class UIManager : Singleton<UIManager>
         {
             OnInGameStateChanged(new InGameStateChangedEvent { NewState = GameFlowManager.Instance.CurrentInGameState });
         }
+
+        // Find pause panel if not assigned
+        if (_pausePanel == null)
+        {
+            _pausePanel = GameObject.Find("PausePanel");
+            if (_pausePanel == null)
+            {
+                Debug.LogWarning("[UIManager] PausePanel not found in scene. Pause functionality may not work.");
+            }
+        }
     }
 }

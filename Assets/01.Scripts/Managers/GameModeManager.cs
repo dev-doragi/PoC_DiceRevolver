@@ -1,16 +1,13 @@
 using UnityEngine;
-using PocDiceTactics;
 
-namespace PocDiceTactics.ModeSelection
+[DefaultExecutionOrder(-100)]
+public class GameModeManager : Singleton<GameModeManager>
 {
-    [DefaultExecutionOrder(-100)]
-    public class GameModeManager : Singleton<GameModeManager>
-    {
-        public GameMode CurrentMode { get; private set; } = GameMode.Normal;
+    public GameMode CurrentMode { get; private set; } = GameMode.Normal;
 
         protected override void Awake()
         {
-            _isDontDestroyOnLoad = false;
+            _isDontDestroyOnLoad = true;
             base.Awake();
         }
 
@@ -38,6 +35,7 @@ namespace PocDiceTactics.ModeSelection
         {
             CurrentMode = evt.NewMode;
             ApplyMode(CurrentMode);
+            EventBus.Instance?.Publish(new ReloadRequestedEvent(evt.NewMode));
         }
 
         private void ApplyMode(GameMode mode)
@@ -46,7 +44,7 @@ namespace PocDiceTactics.ModeSelection
             if (loadedData == null || loadedData.Length == 0)
             {
                 Debug.LogError($"[GameModeManager] Mode switch failed due to data load error: {mode}");
-                return;
+                throw new System.InvalidOperationException($"[GameModeManager] Mode switch failed due to data load error: {mode}");
             }
 
             switch (mode)
@@ -59,5 +57,4 @@ namespace PocDiceTactics.ModeSelection
                     break;
             }
         }
-    }
 }

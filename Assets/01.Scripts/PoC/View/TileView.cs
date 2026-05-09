@@ -3,23 +3,21 @@ using TMPro;
 using System.Collections;
 using DG.Tweening;
 
-namespace PocDiceTactics
+/// <summary>
+/// 단일 타일의 시각 상태(벽/과열/호버/고스트/텔레그래프)를 담당합니다.
+/// </summary>
+[RequireComponent(typeof(BoxCollider2D))]
+public class TileView : MonoBehaviour
 {
-    /// <summary>
-    /// 단일 타일의 시각 상태(벽/과열/호버/고스트/텔레그래프)를 담당합니다.
-    /// </summary>
-    [RequireComponent(typeof(BoxCollider2D))]
-    public class TileView : MonoBehaviour
-    {
-        [Header("Renderers")]
-        [SerializeField] private SpriteRenderer _baseRenderer;
-        [SerializeField] private SpriteRenderer _heatRenderer;
-        [SerializeField] private SpriteRenderer _telegraphRenderer;
-        [SerializeField] private SpriteRenderer _hoverRenderer;
-        [SerializeField] private SpriteRenderer _shotFlashRenderer;
-        [SerializeField] private TextMeshPro _ghostText;
-        [SerializeField] private SpriteRenderer _telegraphOutlineRenderer;
-        [SerializeField] private SpriteRenderer _dangerIconRenderer;
+    [Header("Renderers")]
+    [SerializeField] private SpriteRenderer _baseRenderer;
+    [SerializeField] private SpriteRenderer _heatRenderer;
+    [SerializeField] private SpriteRenderer _telegraphRenderer;
+    [SerializeField] private SpriteRenderer _hoverRenderer;
+    [SerializeField] private SpriteRenderer _shotFlashRenderer;
+    [SerializeField] private TextMeshPro _ghostText;
+    [SerializeField] private SpriteRenderer _telegraphOutlineRenderer;
+    [SerializeField] private SpriteRenderer _dangerIconRenderer;
 
         [Header("Colors")]
         [SerializeField] private Color _floorColor = new Color(0.11f, 0.12f, 0.15f, 1f);
@@ -120,6 +118,8 @@ namespace PocDiceTactics
         public void SetOverheated(bool isOverheated)
         {
             _isOverheated = isOverheated;
+            UpdateHoverVisual();
+
             if (_heatRenderer != null)
             {
                 _heatRenderer.enabled = _isOverheated;
@@ -159,11 +159,20 @@ namespace PocDiceTactics
             _predictedFace = predictedFace;
             _isConfirmHover = isConfirmRequired;
 
-            if (_hoverRenderer != null)
+            UpdateHoverVisual();
+
+            UpdateGhostText();
+        }
+
+        private void UpdateHoverVisual()
+        {
+            if (_hoverRenderer == null)
             {
-                _hoverRenderer.enabled = _isHover;
-                _hoverRenderer.color = _isConfirmHover ? _confirmColor : _hoverColor;
+                return;
             }
+
+            _hoverRenderer.enabled = _isHover && !_isOverheated;
+            _hoverRenderer.color = _isConfirmHover ? _confirmColor : _hoverColor;
         }
 
         public void ClearTransient()
@@ -316,5 +325,4 @@ namespace PocDiceTactics
             _shotFlashRenderer.enabled = false;
             _shotFlashRoutine = null;
         }
-    }
 }

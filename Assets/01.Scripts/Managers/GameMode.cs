@@ -1,10 +1,7 @@
-namespace PocDiceTactics.ModeSelection
+public enum GameMode
 {
-    public enum GameMode
-    {
-        Normal,
-        Hard,
-        Sandbox,
-        GimmickTest
-    }
+    Normal,
+    Hard,
+    Sandbox,
+    GimmickTest
 }

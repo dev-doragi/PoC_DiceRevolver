@@ -1,15 +1,16 @@
+using System.Collections;
+using DG.Tweening;
 using UnityEngine;
 
-namespace PocDiceTactics
+/// <summary>
+/// 적의 추적 및 공격을 담당하는 컨트롤러입니다.
+/// </summary>
+public class EnemyController : MonoBehaviour
 {
-    /// <summary>
-    /// 적의 추적 및 공격을 담당하는 컨트롤러입니다.
-    /// </summary>
-    public class EnemyController : MonoBehaviour
-    {
-        [SerializeField] private int _maxHp = 2;
-        [SerializeField] private int _attackDamage = 1;
-        [SerializeField] private EnemyWorldUI _worldUI;
+    [SerializeField] private int _maxHp = 2;
+    [SerializeField] private int _attackDamage = 1;
+    [SerializeField] private EnemyWorldUI _worldUI;
+    [SerializeField] private float _moveDuration = 0.3f;
 
         private int _currentHp;
         private int _shackleRemainingTurns;
@@ -23,6 +24,7 @@ namespace PocDiceTactics
         private Vector2Int _telegraphTargetCell;
 
         public Vector2Int GridPosition => _gridPosition;
+        public bool IsAlive => _currentHp > 0;
 
         public void Initialize(TurnManager turnManager, GridManager gridManager, WaveManager waveManager, Vector2Int spawnCell)
         {
@@ -85,13 +87,13 @@ namespace PocDiceTactics
             {
                 if (_telegraphTargetCell == playerPos)
                 {
-                    if (PlayerController.Instance != null)
+                    if (PlayerManager.Instance != null && PlayerManager.Instance.Status != null)
                     {
-                        PlayerController.Instance.TakeDamage(_attackDamage);
+                        PlayerManager.Instance.Status.TakeDamage(_attackDamage);
                     }
                     else
                     {
-                        Debug.LogError("[EnemyController] PlayerController.Instance is null");
+                        Debug.LogError("[EnemyController] PlayerManager.Instance or Status is null");
                     }
                     EventBus.Instance?.Publish(new EnemyAttackedEvent { EnemyPosition = _gridPosition });
                 }
@@ -137,7 +139,8 @@ namespace PocDiceTactics
             {
                 _gridManager.TryMoveOccupant(_gridPosition, bestCell, this);
                 _gridPosition = bestCell;
-                transform.position = _gridManager.CellToWorld(_gridPosition);
+                Vector3 targetWorld = _gridManager.CellToWorld(_gridPosition);
+                transform.DOMove(targetWorld, 0.2f).SetEase(Ease.OutQuad);
                 EventBus.Instance?.Publish(new EnemyMovedEvent { EnemyPosition = _gridPosition });
             }
         }
@@ -149,7 +152,8 @@ namespace PocDiceTactics
 
             _gridManager.TryMoveOccupant(_gridPosition, next, this);
             _gridPosition = next;
-            transform.position = _gridManager.CellToWorld(_gridPosition);
+            Vector3 targetWorld = _gridManager.CellToWorld(_gridPosition);
+            transform.DOMove(targetWorld, 0.15f).SetEase(Ease.OutQuad);
             return true;
         }
 
@@ -206,4 +210,3 @@ namespace PocDiceTactics
             });
         }
     }
-}

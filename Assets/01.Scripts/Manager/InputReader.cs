@@ -13,6 +13,8 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
 
         private InputSystem_Actions _inputActions;
         private bool _isInputBlocked = false;
+        private bool _isPlayerInputArmed = true;
+        private bool _isWaitingForPlayerInputRelease;
 
         public bool IsInputBlocked => _isInputBlocked;
         public bool IsPointerOverUI { get; private set; }
@@ -28,14 +30,24 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
             _inputActions.Player.Enable();
             _inputActions.System.Enable();
 
+            EventBus.Instance?.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
+
             if (_useGameStateInputGate)
             {
                 EventBus.Instance?.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+            }
+
+            if (TurnManager.Instance != null && TurnManager.Instance.CurrentPhase == TurnPhase.PlayerTurn)
+            {
+                _isPlayerInputArmed = true;
+                _isWaitingForPlayerInputRelease = false;
             }
         }
 
         private void OnDisable()
         {
+            EventBus.Instance?.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
+
             if (_useGameStateInputGate)
             {
                 EventBus.Instance?.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
@@ -47,14 +59,27 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
 
         private void Update()
         {
+            if (TurnManager.Instance != null && TurnManager.Instance.CurrentPhase == TurnPhase.PlayerTurn && !_isPlayerInputArmed)
+            {
+                _isPlayerInputArmed = true;
+                _isWaitingForPlayerInputRelease = false;
+            }
+
             if (EventSystem.current != null)
             {
                 IsPointerOverUI = EventSystem.current.IsPointerOverGameObject();
             }
 
+            if (_isWaitingForPlayerInputRelease && !IsAnyPlayerInputHeld())
+            {
+                _isWaitingForPlayerInputRelease = false;
+                _isPlayerInputArmed = true;
+            }
+
             // InputAction 맵 설정 누락 시에도 ESC 일시정지가 동작하도록 폴백 처리
             if (!_isInputBlocked && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
+                Debug.Log("[InputReader] ESC pressed, publishing PausePressedEvent");
                 EventBus.Instance?.Publish(new PausePressedEvent());
             }
         }
@@ -63,7 +88,7 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
 
         public void OnMove(InputAction.CallbackContext context)
         {
-            if (_isInputBlocked) return;
+            if (_isInputBlocked || !_isPlayerInputArmed) return;
 
             // PoC의 타일 이동을 위해 입력이 시작된 순간(Started)만 감지하여 1칸씩 이동 처리
             if (context.started)
@@ -79,34 +104,45 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
 
         public void OnAttack(InputAction.CallbackContext context)
         {
+            if (!_isPlayerInputArmed) return;
             if (context.started) PublishIfAllowed(new FirePressedEvent());
         }
 
         public void OnJump(InputAction.CallbackContext context)
         {
             // 제공된 액션맵에서 Space가 Jump로 되어 있으므로, 기존 사격(Space) 조작감을 유지하기 위해 Fire 연동
+            if (!_isPlayerInputArmed) return;
             if (context.started) PublishIfAllowed(new FirePressedEvent());
         }
 
         public void OnClick(InputAction.CallbackContext context)
         {
+            if (!_isPlayerInputArmed) return;
             if (context.started) PublishIfAllowed(new ClickEvent { IsStarted = true });
             else if (context.canceled) PublishIfAllowed(new ClickEvent { IsStarted = false });
         }
 
         public void OnRightClick(InputAction.CallbackContext context)
         {
+            if (context.canceled)
+            {
+                PublishRightClickIfAllowed(false);
+                return;
+            }
+
+            if (!_isPlayerInputArmed) return;
             if (context.started) PublishRightClickIfAllowed(true);
-            else if (context.canceled) PublishRightClickIfAllowed(false);
         }
 
         public void OnRotate(InputAction.CallbackContext context)
         {
+            if (!_isPlayerInputArmed) return;
             if (context.performed) PublishIfAllowed(new RotateEvent());
         }
 
         public void OnScroll(InputAction.CallbackContext context)
         {
+            if (!_isPlayerInputArmed) return;
             if (context.performed)
             {
                 float scrollValue = context.ReadValue<Vector2>().y;
@@ -157,6 +193,56 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
 
             if (evt.NewState == GameState.Playing) _inputActions.Player.Enable();
             else _inputActions.Player.Disable();
+        }
+
+        private void OnPhaseChanged(PhaseChangedEvent evt)
+        {
+            if (TurnManager.Instance == null)
+            {
+                Debug.LogError("InputReader - TurnManager not ready");
+                return;
+            }
+
+            if (evt.Phase == TurnPhase.PlayerTurn)
+            {
+                _isPlayerInputArmed = true;
+                _isWaitingForPlayerInputRelease = false;
+                return;
+            }
+
+            _isPlayerInputArmed = false;
+            _isWaitingForPlayerInputRelease = false;
+        }
+
+        private bool IsAnyPlayerInputHeld()
+        {
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.wKey.isPressed || Keyboard.current.aKey.isPressed || Keyboard.current.sKey.isPressed || Keyboard.current.dKey.isPressed)
+                {
+                    return true;
+                }
+
+                if (Keyboard.current.upArrowKey.isPressed || Keyboard.current.downArrowKey.isPressed || Keyboard.current.leftArrowKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                {
+                    return true;
+                }
+
+                if (Keyboard.current.spaceKey.isPressed)
+                {
+                    return true;
+                }
+            }
+
+            if (Mouse.current != null)
+            {
+                if (Mouse.current.leftButton.isPressed || Mouse.current.rightButton.isPressed)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void SetInputBlocked(bool blocked)

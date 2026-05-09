@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using PocDiceTactics;
 
 [RequireComponent(typeof(Camera))]
 [DefaultExecutionOrder(-110)]
@@ -123,6 +122,12 @@ public class CameraManager : Singleton<CameraManager>
 
     private void HandleRightClick(RightClickEvent e)
     {
+        if (InputReader.Instance != null && InputReader.Instance.IsInputBlocked)
+        {
+            _isDragging = false;
+            return;
+        }
+
         if (InputReader.Instance != null && InputReader.Instance.IsPointerOverUI && e.IsStarted) return;
         _isDragging = e.IsStarted;
         if (e.IsStarted)

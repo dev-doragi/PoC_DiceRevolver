@@ -1,12 +1,9 @@
 using UnityEngine;
-using PocDiceTactics.ModeSelection;
 
-namespace PocDiceTactics
+public class GimmickPanelController : Singleton<GimmickPanelController>
 {
-    public class GimmickPanelController : Singleton<GimmickPanelController>
-    {
-        [SerializeField] private Transform _contentParent;
-        [SerializeField] private GameObject _entryPrefab;
+    [SerializeField] private Transform _contentParent;
+    [SerializeField] private GameObject _entryPrefab;
 
         protected override void Awake()
         {
@@ -54,7 +51,7 @@ namespace PocDiceTactics
         private void BuildEntries()
         {
             BulletUIData[] bulletDataList = Resources.LoadAll<BulletUIData>("Bullets");
-            PocDiceTactics.ModeSelection.GameModeManager modeManager = FindAnyObjectByType<PocDiceTactics.ModeSelection.GameModeManager>();
+            GameModeManager modeManager = FindAnyObjectByType<GameModeManager>();
             GameMode mode = modeManager != null ? modeManager.CurrentMode : GameMode.Normal;
             for (int i = 0; i < bulletDataList.Length; i++)
             {
@@ -107,5 +104,4 @@ namespace PocDiceTactics
                     return true;
             }
         }
-    }
 }
