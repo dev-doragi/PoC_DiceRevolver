@@ -24,6 +24,8 @@ public class Bootstrapper : MonoBehaviour
     [SerializeField] private PoolManager _poolManagerPrefab;
 
     [Header("PoC Managers (Non-DDOL)")]
+    [SerializeField] private PocDiceTactics.ModeSelection.GameModeManager _uiGameModeManagerPrefab;
+    [SerializeField] private PocDiceTactics.GameModeManager _pocGameModeManagerPrefab;
     [SerializeField] private PocDiceTactics.GridManager _pocGridManagerPrefab;
     [SerializeField] private PocDiceTactics.WaveManager _pocWaveManagerPrefab;
     [SerializeField] private PocDiceTactics.PlayerController _pocPlayerControllerPrefab;
@@ -45,6 +47,8 @@ public class Bootstrapper : MonoBehaviour
         EnsureInstance(_cameraManagerPrefab);
         EnsureInstance(_uiManagerPrefab);
         EnsureInstance(_poolManagerPrefab);
+
+        EnsureModeManagerInstances();
 
         // PoC scope - no prefab instantiation needed, use Instance
         // PoC managers are instantiated via their prefabs in scene or manually
@@ -75,6 +79,12 @@ public class Bootstrapper : MonoBehaviour
         if (SoundManager.Instance != null) SoundManager.Instance.BootstrapIfNeeded();
 
         // Phase 5: PoC Managers
+        PocDiceTactics.ModeSelection.GameModeManager uiGameModeManager = FindAnyObjectByType<PocDiceTactics.ModeSelection.GameModeManager>();
+        if (uiGameModeManager != null) uiGameModeManager.BootstrapIfNeeded();
+
+        PocDiceTactics.GameModeManager pocGameModeManager = FindAnyObjectByType<PocDiceTactics.GameModeManager>();
+        if (pocGameModeManager != null) pocGameModeManager.BootstrapIfNeeded();
+
         if (PocDiceTactics.GridManager.Instance != null) PocDiceTactics.GridManager.Instance.BootstrapIfNeeded();
         if (PocDiceTactics.WaveManager.Instance != null) PocDiceTactics.WaveManager.Instance.BootstrapIfNeeded();
         if (PocDiceTactics.PlayerController.Instance != null) PocDiceTactics.PlayerController.Instance.BootstrapIfNeeded();
@@ -113,5 +123,28 @@ public class Bootstrapper : MonoBehaviour
         if (prefab == null) return;
         if (FindAnyObjectByType<T>() != null) return;
         Instantiate(prefab);
+    }
+
+    private void EnsureModeManagerInstances()
+    {
+        EnsureInstanceWithFallback(_uiGameModeManagerPrefab, "GameModeManager_UI");
+        EnsureInstanceWithFallback(_pocGameModeManagerPrefab, "GameModeManager_PoC");
+    }
+
+    private void EnsureInstanceWithFallback<T>(T prefab, string fallbackObjectName) where T : MonoBehaviour
+    {
+        if (FindAnyObjectByType<T>() != null)
+        {
+            return;
+        }
+
+        if (prefab != null)
+        {
+            Instantiate(prefab);
+            return;
+        }
+
+        GameObject fallbackObject = new GameObject(fallbackObjectName);
+        fallbackObject.AddComponent<T>();
     }
 }

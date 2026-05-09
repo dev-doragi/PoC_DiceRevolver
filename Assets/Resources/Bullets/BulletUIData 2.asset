@@ -14,3 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletUIData
   BulletType: 1
   BulletLogic: {fileID: 11400000, guid: a60f0b52e2013404d8f28d1da667d94a, type: 2}
+  Description: "\uD53C\uACA9 \uC2DC \uB4A4\uB85C \uD55C \uCE78 \uBC00\uB824\uB09C\uB2E4.
+    \uBCBD\uC5D0 \uBD80\uB52A\uD788\uBA74 \uB354 \uAC15\uD55C \uCDA9\uACA9\uC744
+    \uC904 \uC218 \uC788\uB2E4."

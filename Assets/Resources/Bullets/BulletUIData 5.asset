@@ -10,7 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a66beeff8da53df408e538db71ff67a2, type: 3}
-  m_Name: BulletUIData 4
+  m_Name: BulletUIData 5
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletUIData
-  BulletType: 3
-  BulletLogic: {fileID: 11400000, guid: cb37fd43f47cf7c4085b57be2911bea6, type: 2}
+  BulletType: 4
+  BulletLogic: {fileID: 11400000, guid: 3f411abfd8a4ba2428736da21a2500df, type: 2}
+  Description: "\uD53C\uACA9 \uC2DC 2\uD134\uAC04 \uAE30\uC808\uC5D0 \uAC78\uB9B0\uB2E4."
