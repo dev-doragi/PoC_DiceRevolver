@@ -121,7 +121,19 @@ public class CylinderSystem : Singleton<CylinderSystem>
                         return false;
                     }
 
-                    logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+                    var laserResult = PathCalculationService.CalculateLaserPath(
+                        origin,
+                        direction,
+                        Mathf.Max(_gridManager.GridSize.x, _gridManager.GridSize.y) * 2,
+                        _gridManager.IsInside,
+                        _gridManager.IsWall);
+
+                    logicResult = new GridManager.LaserLogicResult
+                    {
+                        PassedTiles = new List<Vector2Int>(laserResult.PassedTiles),
+                        HitWallTile = laserResult.HitWallTile,
+                        HitWall = laserResult.HitWall
+                    };
 
                     int damageMultiplier = 1;
                     if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.RussianRoulette)
@@ -188,19 +200,25 @@ public class CylinderSystem : Singleton<CylinderSystem>
             }
 
             BulletLogicSO bulletLogic = _bulletDatabase[bulletType];
-            RicochetBulletSO ricochetBullet = bulletLogic as RicochetBulletSO;
-            if (ricochetBullet == null)
-            {
-                return false;
-            }
-
             if (_gridManager == null)
             {
                 Debug.LogError("[CylinderSystem] _gridManager is null");
                 return false;
             }
 
-            logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+            var laserResult = PathCalculationService.CalculateLaserPath(
+                origin,
+                direction,
+                Mathf.Max(_gridManager.GridSize.x, _gridManager.GridSize.y) * 2,
+                _gridManager.IsInside,
+                _gridManager.IsWall);
+
+            logicResult = new GridManager.LaserLogicResult
+            {
+                PassedTiles = new List<Vector2Int>(laserResult.PassedTiles),
+                HitWallTile = laserResult.HitWallTile,
+                HitWall = laserResult.HitWall
+            };
             return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
         }
 
@@ -240,14 +258,19 @@ public class CylinderSystem : Singleton<CylinderSystem>
                 return false;
             }
 
-            RicochetBulletSO ricochetBullet = bulletLogic as RicochetBulletSO;
-            if (ricochetBullet != null)
-            {
-                logicResult = _gridManager.CalculateLaserLogic(origin, direction);
-                return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
-            }
+            var laserResult = PathCalculationService.CalculateLaserPath(
+                origin,
+                direction,
+                Mathf.Max(_gridManager.GridSize.x, _gridManager.GridSize.y) * 2,
+                _gridManager.IsInside,
+                _gridManager.IsWall);
 
-            logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+            logicResult = new GridManager.LaserLogicResult
+            {
+                PassedTiles = new List<Vector2Int>(laserResult.PassedTiles),
+                HitWallTile = laserResult.HitWallTile,
+                HitWall = laserResult.HitWall
+            };
             return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
         }
 
@@ -273,7 +296,19 @@ public class CylinderSystem : Singleton<CylinderSystem>
             }
 
             List<Vector3> path = _bulletDatabase[bulletType].Execute(origin, direction, _gridManager, 1);
-            GridManager.LaserLogicResult logicResult = _gridManager.CalculateLaserLogic(origin, direction);
+            var laserResult = PathCalculationService.CalculateLaserPath(
+                origin,
+                direction,
+                Mathf.Max(_gridManager.GridSize.x, _gridManager.GridSize.y) * 2,
+                _gridManager.IsInside,
+                _gridManager.IsWall);
+
+            GridManager.LaserLogicResult logicResult = new GridManager.LaserLogicResult
+            {
+                PassedTiles = new List<Vector2Int>(laserResult.PassedTiles),
+                HitWallTile = laserResult.HitWallTile,
+                HitWall = laserResult.HitWall
+            };
             EventBus.Instance?.Publish(new ShotFiredEvent
             {
                 Origin = origin,

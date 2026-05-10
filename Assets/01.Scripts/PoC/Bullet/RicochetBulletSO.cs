@@ -1,11 +1,12 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 [CreateAssetMenu(fileName = "RicochetBullet", menuName = "PoC/Bullets/Ricochet")]
 public class RicochetBulletSO : BulletLogicSO
 {
     [SerializeField] private int _maxBounces = 2;
-    [SerializeField] private float _stepSize = 0.25f; // 레이캐스트 정밀도
+    [SerializeField] private float _stepSize = 0.25f; // 유지 중인 인스펙터 값
 
     public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
     {
@@ -31,33 +32,22 @@ public class RicochetBulletSO : BulletLogicSO
             return pathPoints;
         }
 
-        // PathCalculationService 를 사용하여 경로 계산 (GridManager 책임 분리)
-        var ricochetResult = PathCalculationService.CalculateRicochetPath(origin, direction, _maxBounces, _stepSize, grid);
-        
-        Vector2 dir = new Vector2(direction.x, direction.y).normalized;
-        Vector2 currentPos = origin;
-        Vector2Int lastCell = origin;
-        int bounceCount = 0;
-        bool isPiercing = false;
-        int currentDamageMultiplier = damageMultiplier;
+        PathCalculationService.RicochetPathResult result = PathCalculationService.CalculateRicochetPath(
+            origin,
+            direction,
+            _maxBounces,
+            Mathf.Max(grid.GridSize.x, grid.GridSize.y) * 2,
+            grid.IsInside,
+            grid.IsWall);
 
-        // 계산된 경로를 따라 타일 순회하며 적 처리
-        foreach (var tile in ricochetResult.AllPassedTiles)
+        foreach (Vector2Int cell in result.PassedTiles)
         {
-            pathPoints.Add(grid.CellToWorld(tile));
-            
-            EnemyController enemy = grid.GetOccupant(tile) as EnemyController;
-            if (enemy != null)
-            {
-                if (applyDamage)
-                {
-                    enemy.TakeDamage(Damage * currentDamageMultiplier);
-                }
+            pathPoints.Add(grid.CellToWorld(cell));
 
-                if (!isPiercing)
-                {
-                    return pathPoints;
-                }
+            EnemyController enemy = grid.GetOccupant(cell) as EnemyController;
+            if (enemy != null && applyDamage)
+            {
+                enemy.TakeDamage(Damage * damageMultiplier);
             }
         }
 
