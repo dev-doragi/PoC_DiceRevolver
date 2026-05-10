@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 그리드 맵과 장애물, 타일 과열 상태를 관리합니다.
 /// </summary>
-public class GridManager : Singleton<GridManager>
+public class GridManager : Singleton<GridManager>, IGridDataProvider
 {
     public struct LaserLogicResult
     {
@@ -37,6 +37,12 @@ public class GridManager : Singleton<GridManager>
         public Vector2Int GridSize => _gridSize;
         public float CellSize => _cellSize;
         public Vector2 WorldOrigin => _worldOrigin;
+
+        // IGridDataProvider implementation (for PathCalculationService)
+        bool IGridDataProvider.IsInside(Vector2Int cell) => IsInside(cell);
+        bool IGridDataProvider.IsWall(Vector2Int cell) => IsWall(cell);
+        MonoBehaviour IGridDataProvider.GetOccupant(Vector2Int cell) => GetOccupant(cell);
+        Vector2Int IGridDataProvider.GridSize => GridSize;
 
         protected override void Awake()
         {

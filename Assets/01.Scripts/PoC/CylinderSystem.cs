@@ -200,8 +200,28 @@ public class CylinderSystem : Singleton<CylinderSystem>
                 return false;
             }
 
-            logicResult = _gridManager.CalculateLaserLogic(origin, direction);
-            return logicResult.PassedTiles != null && (logicResult.PassedTiles.Count > 0 || logicResult.HitWall);
+            // PathCalculationService 를 사용하여 실제 발사와 동일한 경로 계산 (Preview 일치 보장)
+            var ricochetResult = PathCalculationService.ComputeRicochetPath(
+                origin,
+                direction,
+                2, // _maxBounces 값과 일치시켜야 함 (RicochetBulletSO 에서 가져오는게 이상적)
+                10, // _maxRangePerSegment 값과 일치
+                _gridManager as IGridDataProvider
+            );
+
+            // 기존 반환 타입과 호환을 위해 첫 세그먼트만 사용
+            if (ricochetResult.Segments.Count > 0 && ricochetResult.Segments[0].PassedTiles.Count > 0)
+            {
+                logicResult = new GridManager.LaserLogicResult
+                {
+                    PassedTiles = ricochetResult.Segments[0].PassedTiles,
+                    HitWallTile = ricochetResult.Segments[0].BouncePoint,
+                    HitWall = ricochetResult.Segments[0].HitWall
+                };
+                return true;
+            }
+
+            return false;
         }
 
         public bool TryGetCurrentBulletPreviewPath(Vector2Int origin, Vector2Int direction, out GridManager.LaserLogicResult logicResult)

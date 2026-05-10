@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class RicochetBulletSO : BulletLogicSO
 {
     [SerializeField] private int _maxBounces = 2;
-    [SerializeField] private float _stepSize = 0.25f; // 레이캐스트 정밀도
+    [SerializeField] private int _maxRangePerSegment = 10; // 세그먼트당 최대 거리
 
     public override List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1)
     {
@@ -31,140 +31,47 @@ public class RicochetBulletSO : BulletLogicSO
             return pathPoints;
         }
 
-        Vector2 currentPos = origin;
-        Vector2 dir = new Vector2(direction.x, direction.y).normalized;
+        // PathCalculationService 를 사용하여 일관된 경로 계산
+        var ricochetResult = PathCalculationService.ComputeRicochetPath(
+            origin, 
+            direction, 
+            _maxBounces, 
+            _maxRangePerSegment, 
+            grid as IGridDataProvider
+        );
 
-        int bounceCount = 0;
-        bool isPiercing = false;
         int currentDamageMultiplier = damageMultiplier;
-        Vector2Int lastCell = origin;
-
-        for (int step = 0; step < 400; step++)
+        
+        foreach (var segment in ricochetResult.Segments)
         {
-            currentPos += dir * _stepSize;
-            Vector2Int currentCell = new Vector2Int(Mathf.RoundToInt(currentPos.x), Mathf.RoundToInt(currentPos.y));
-
-            if (currentCell == lastCell)
+            foreach (Vector2Int cell in segment.PassedTiles)
             {
-                continue;
+                pathPoints.Add(grid.CellToWorld(cell));
+
+                // 적 체크 및 데미지 적용
+                EnemyController enemy = grid.GetOccupant(cell) as EnemyController;
+                if (enemy != null)
+                {
+                    if (applyDamage)
+                    {
+                        enemy.TakeDamage(Damage * currentDamageMultiplier);
+                    }
+
+                    // 리코셰 탄은 관통하지 않음 (첫 번째 적에서 중지)
+                    if (!segment.HitWall)
+                    {
+                        return pathPoints;
+                    }
+                }
             }
 
-            if (!grid.IsInside(currentCell) || grid.IsWall(currentCell))
+            // 벽에 닿았으면 다음 세그먼트로 계속 (데미지 멀티플라이어 증가)
+            if (segment.HitWall)
             {
-                bounceCount++;
-                if (bounceCount > _maxBounces)
-                {
-                    return pathPoints;
-                }
-
-                isPiercing = true;
                 currentDamageMultiplier++;
-
-                dir = ResolveBounceDirection(grid, lastCell, currentCell, dir);
-
-                currentPos = new Vector2(lastCell.x, lastCell.y) + dir * 0.01f;
-                currentCell = lastCell;
-                continue;
             }
-
-            Vector2Int delta = currentCell - lastCell;
-
-            // 대각 이동 시 중간 셀 누락 방지 판정
-            if (Mathf.Abs(delta.x) == 1 && Mathf.Abs(delta.y) == 1)
-            {
-                Vector2Int sideCellX = new Vector2Int(lastCell.x + delta.x, lastCell.y);
-                Vector2Int sideCellY = new Vector2Int(lastCell.x, lastCell.y + delta.y);
-
-                EnemyController enemyOnSideX = grid.GetOccupant(sideCellX) as EnemyController;
-                if (enemyOnSideX != null)
-                {
-                    pathPoints.Add(grid.CellToWorld(sideCellX));
-                    if (applyDamage)
-                    {
-                        enemyOnSideX.TakeDamage(Damage * currentDamageMultiplier);
-                    }
-
-                    if (!isPiercing)
-                    {
-                        return pathPoints;
-                    }
-                }
-
-                EnemyController enemyOnSideY = grid.GetOccupant(sideCellY) as EnemyController;
-                if (enemyOnSideY != null)
-                {
-                    pathPoints.Add(grid.CellToWorld(sideCellY));
-                    if (applyDamage)
-                    {
-                        enemyOnSideY.TakeDamage(Damage * currentDamageMultiplier);
-                    }
-
-                    if (!isPiercing)
-                    {
-                        return pathPoints;
-                    }
-                }
-            }
-
-            EnemyController enemy = grid.GetOccupant(currentCell) as EnemyController;
-            pathPoints.Add(grid.CellToWorld(currentCell));
-            if (enemy != null)
-            {
-                if (applyDamage)
-                {
-                    enemy.TakeDamage(Damage * currentDamageMultiplier);
-                }
-
-                if (!isPiercing)
-                {
-                    return pathPoints;
-                }
-            }
-
-            lastCell = currentCell;
         }
 
         return pathPoints;
-    }
-
-    private Vector2 ResolveBounceDirection(GridManager grid, Vector2Int lastCell, Vector2Int currentCell, Vector2 dir)
-    {
-        bool hitX = lastCell.x != currentCell.x;
-        bool hitY = lastCell.y != currentCell.y;
-
-        if (hitX && hitY)
-        {
-            if (Mathf.Abs(dir.x) >= Mathf.Abs(dir.y))
-            {
-                return new Vector2(-dir.x, dir.y);
-            }
-
-            return new Vector2(dir.x, -dir.y);
-        }
-
-        if (hitX)
-        {
-            return new Vector2(-dir.x, dir.y);
-        }
-
-        if (hitY)
-        {
-            return new Vector2(dir.x, -dir.y);
-        }
-
-        if (!grid.IsInside(currentCell))
-        {
-            if (currentCell.x < 0 || currentCell.x >= grid.GridSize.x)
-            {
-                return new Vector2(-dir.x, dir.y);
-            }
-
-            if (currentCell.y < 0 || currentCell.y >= grid.GridSize.y)
-            {
-                return new Vector2(dir.x, -dir.y);
-            }
-        }
-
-        return -dir;
     }
 }
