@@ -24,13 +24,9 @@ namespace PocDiceTactics
         [SerializeField] private Vector3 _tileOffset = Vector3.zero;
         [SerializeField] private float _shotStepInterval = 0.035f;
         [SerializeField] private LineRenderer _laserLine;
-        [SerializeField] private float _laserTravelSpeed = 24f;
         [SerializeField] private float _laserFadeDuration = 0.12f;
         [SerializeField] private float _laserMinWidth = 0.03f;
         [SerializeField] private float _laserMaxWidth = 0.1f;
-        [SerializeField] private LineRenderer _ricochetPreviewLine;
-        [SerializeField] private float _instantShotHoldDuration = 0.01f;
-        [SerializeField] private float _previewLineWidth = 0.045f;
         [SerializeField] private GameObject _damagePopupPrefab;
         [SerializeField] private Transform _damagePopupCanvasRoot;
         [SerializeField] private string _hitParticleKey = "Explosion";
@@ -101,7 +97,6 @@ namespace PocDiceTactics
             _isShotPathRunning = false;
             _isLaserRunning = false;
             ClearTurnStartHighlights();
-            HideRicochetPreview();
         }
 
         private void TryResolveReferences()
@@ -265,7 +260,6 @@ namespace PocDiceTactics
             _hasHoverCell = false;
             _hasGhostCell = false;
             ClearTurnStartHighlights();
-            HideRicochetPreview();
         }
 
         private void ShowTurnStartHighlights()
@@ -324,14 +318,11 @@ namespace PocDiceTactics
                 _shotRoutine = null;
             }
 
-            HideRicochetPreview();
-
             _isShotVisualActive = true;
-            _isShotPathRunning = false; // 타일 플래시 루틴 비활성
+            _isShotPathRunning = false;
             _isLaserRunning = false;
 
             PlayLaserEffect(e);
-            // _shotRoutine = StartCoroutine(PlayShotPathRoutine(e)); // 제거
         }
 
         private void OnEnemyDamaged(EnemyDamagedEvent e)
