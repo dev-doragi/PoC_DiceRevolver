@@ -3,6 +3,7 @@ using UnityEngine;
 public class PlayerStatusSystem : MonoBehaviour
 {
     [SerializeField] private int _maxHp = 10;
+    [SerializeField] private int _currentAP = 2;
 
     private PlayerManager _playerManager;
     private PlayerController _playerController;
@@ -10,7 +11,7 @@ public class PlayerStatusSystem : MonoBehaviour
 
     private int _currentHp;
 
-    public int CurrentAP { get; private set; }
+    public int CurrentAP { get => _currentAP; private set => _currentAP = value; }
     public int CurrentHP => _currentHp;
 
     public void Initialize(PlayerManager playerManager)
