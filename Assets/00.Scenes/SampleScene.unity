@@ -629,10 +629,13 @@ MonoBehaviour:
   _tileOffset: {x: 0, y: 0, z: 0}
   _shotStepInterval: 0.035
   _laserLine: {fileID: 357625840}
-  _laserTravelSpeed: 24
+  _laserTravelSpeed: 35
   _laserFadeDuration: 0.12
   _laserMinWidth: 0.03
   _laserMaxWidth: 0.1
+  _ricochetPreviewLine: {fileID: 357625840}
+  _instantShotHoldDuration: 0.01
+  _previewLineWidth: 0.045
   _damagePopupPrefab: {fileID: 7508895564446273584, guid: 78285644d84e04349aa5875981242ab4, type: 3}
   _damagePopupCanvasRoot: {fileID: 658477276}
   _hitParticleKey: Explosion
@@ -5804,8 +5807,16 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2061775525139515263, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
+      propertyPath: _maxAP
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 2061775525139515263, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
       propertyPath: _maxHp
       value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2061775525139515263, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
+      propertyPath: _currentAP
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 8255942388971451665, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
       propertyPath: m_Name

@@ -3,13 +3,14 @@ using UnityEngine;
 public class PlayerStatusSystem : MonoBehaviour
 {
     [SerializeField] private int _maxHp = 10;
-    [SerializeField] private int _currentAP = 2;
+    [SerializeField] private int _maxAP = 2;
 
     private PlayerManager _playerManager;
     private PlayerController _playerController;
     private TurnManager _turnManager;
 
     private int _currentHp;
+    private int _currentAP;
 
     public int CurrentAP { get => _currentAP; private set => _currentAP = value; }
     public int CurrentHP => _currentHp;
@@ -19,14 +20,14 @@ public class PlayerStatusSystem : MonoBehaviour
         _playerManager = playerManager;
         _playerController = GetComponent<PlayerController>();
         _currentHp = _maxHp;
-        CurrentAP = 2;
+        CurrentAP = _maxAP;
     }
 
     public void InitializeCombatContext(TurnManager turnManager)
     {
         _turnManager = turnManager;
         _currentHp = _maxHp;
-        CurrentAP = 2;
+        CurrentAP = _maxAP;
 
         EventBus.Instance?.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
         EventBus.Instance?.Publish(new PlayerDamagedEvent { Damage = 0, RemainingHp = _currentHp });
@@ -73,7 +74,7 @@ public class PlayerStatusSystem : MonoBehaviour
         }
         else
         {
-            CurrentAP = 2;
+            CurrentAP = _maxAP;
         }
 
         EventBus.Instance.Publish(new PlayerAPChangedEvent { CurrentAP = CurrentAP });
