@@ -773,7 +773,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletTrajectoryVisualizer
   _gridManager: {fileID: 1808568741}
   _laserLine: {fileID: 357625840}
-  _laserTravelSpeed: 50
+  _laserTravelSpeed: 100
   _laserFadeDuration: 0.12
   _laserMinWidth: 0.03
   _laserMaxWidth: 0.1
