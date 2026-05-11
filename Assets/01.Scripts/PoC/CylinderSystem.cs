@@ -383,4 +383,19 @@ public class CylinderSystem : Singleton<CylinderSystem>
             });
         }
 
+        public int GetCurrentBulletType()
+        {
+            return _chambers[_firePointer] ?? -1;
+        }
+
+        public BulletLogicSO GetBulletLogic(int index)
+        {
+            return index >= 0 && index < _bulletDatabase.Length ? _bulletDatabase[index] : null;
+        }
+
+        public BulletLogicSO GetCurrentBulletLogic()
+        {
+            int type = GetCurrentBulletType();
+            return GetBulletLogic(type);
+        }
 }

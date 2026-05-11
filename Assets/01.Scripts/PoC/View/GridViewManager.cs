@@ -52,6 +52,7 @@ namespace PocDiceTactics
             EventBus.Instance.Subscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
             EventBus.Instance.Subscribe<GameOverEvent>(OnGameOver);
             EventBus.Instance.Subscribe<EnemyDamagedEvent>(OnEnemyDamaged);
+            EventBus.Instance.Subscribe<WallDestroyedEvent>(OnWallDestroyed);
         }
 
         private void OnDisable()
@@ -66,6 +67,7 @@ namespace PocDiceTactics
             EventBus.Instance.Unsubscribe<EnemyTelegraphEvent>(OnEnemyTelegraph);
             EventBus.Instance.Unsubscribe<GameOverEvent>(OnGameOver);
             EventBus.Instance.Unsubscribe<EnemyDamagedEvent>(OnEnemyDamaged);
+            EventBus.Instance.Unsubscribe<WallDestroyedEvent>(OnWallDestroyed);
             ClearTurnStartHighlights();
         }
 
@@ -155,6 +157,10 @@ namespace PocDiceTactics
         private void OnMoveGhost(MoveGhostEvent e)
         {
             ClearGhostOnly();
+            if (_gridManager != null && _gridManager.IsWall(e.TargetCell))
+            {
+                return; // 벽 타일은 이동 하이라이팅 방지
+            }
             if (_tileMap.TryGetValue(e.TargetCell, out TileView tile))
             {
                 tile.SetHover(true, e.PredictedTopFace, e.IsConfirmRequired);
@@ -336,6 +342,14 @@ namespace PocDiceTactics
                 tile.SetHover(keepTurnStartHighlight, 0, false);
             }
             _hasGhostCell = false;
+        }
+
+        private void OnWallDestroyed(WallDestroyedEvent e)
+        {
+            if (_tileMap.TryGetValue(e.Cell, out TileView tile))
+            {
+                tile.SetWall(false);
+            }
         }
     }
 }

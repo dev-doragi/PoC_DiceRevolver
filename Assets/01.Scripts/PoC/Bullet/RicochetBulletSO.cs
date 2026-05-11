@@ -69,7 +69,6 @@ public class RicochetBulletSO : BulletLogicSO
 
             Vector2Int delta = currentCell - lastCell;
 
-            // 대각 이동 시 중간 셀 누락 방지 판정
             if (Mathf.Abs(delta.x) == 1 && Mathf.Abs(delta.y) == 1)
             {
                 Vector2Int sideCellX = new Vector2Int(lastCell.x + delta.x, lastCell.y);

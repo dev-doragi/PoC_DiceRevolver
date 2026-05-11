@@ -184,6 +184,13 @@ public class GridManager : Singleton<GridManager>
             if (_walls.Contains(cell))
             {
                 _walls.Remove(cell);
+
+                if (PoolManager.Instance != null)
+                {
+                    PoolManager.Instance.Spawn("Explosion", CellToWorld(cell), Quaternion.identity);
+                }
+
+                EventBus.Instance?.Publish(new WallDestroyedEvent { Cell = cell });
                 return true;
             }
 
@@ -284,49 +291,7 @@ public class GridManager : Singleton<GridManager>
             return actor;
         }
 
-        public IEnumerable<Vector2Int> GetBresenhamLine(Vector2Int origin, Vector2Int delta, int maxDistance = 100)
-        {
-            if (delta == Vector2Int.zero)
-            {
-                yield break;
-            }
-
-            int x0 = origin.x;
-            int y0 = origin.y;
-            int x1 = x0 + delta.x;
-            int y1 = y0 + delta.y;
-
-            int dx = Mathf.Abs(x1 - x0);
-            int dy = Mathf.Abs(y1 - y0);
-            int sx = x0 < x1 ? 1 : -1;
-            int sy = y0 < y1 ? 1 : -1;
-            int err = dx - dy;
-
-            while (true)
-            {
-                int e2 = err * 2;
-
-                if (e2 > -dy)
-                {
-                    err -= dy;
-                    x0 += sx;
-                }
-
-                if (e2 < dx)
-                {
-                    err += dx;
-                    y0 += sy;
-                }
-
-                Vector2Int next = new Vector2Int(x0, y0);
-                if (!IsInside(next))
-                {
-                    yield break;
-                }
-
-                yield return next;
-            }
-        }
+        // GetBresenhamLine method removed as per refactoring to use PathCalculationService exclusively
 
         public LaserLogicResult CalculateLaserPath(Vector2Int startTile, Vector2 direction, int maxRange)
         {

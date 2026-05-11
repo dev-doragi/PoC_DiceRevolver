@@ -254,6 +254,12 @@ public class PlayerController : MonoBehaviour
         aimDirection = Vector2Int.zero;
         predictedTopFace = 0;
 
+        GridManager gridManager = TurnManager.Instance != null ? TurnManager.Instance.GridManager : null;
+        if (gridManager == null)
+        {
+            return false;
+        }
+
         if (!TryGetMouseTargetCell(out Vector2Int currentTargetCell))
         {
             return false;

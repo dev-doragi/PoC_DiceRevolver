@@ -8,6 +8,9 @@ public abstract class BulletLogicSO : ScriptableObject
     public Sprite Icon;
     public Color ThemeColor = Color.white;
 
+    public bool CanIgnoreMuzzleBlock; // 매그넘, 관통은 true
+    public bool CanDestroyWall; // 매그넘은 true
+
         public abstract List<Vector3> Execute(Vector2Int origin, Vector2Int direction, GridManager grid, int damageMultiplier = 1);
 
         protected EnemyController GetFirstEnemyInLine(Vector2Int origin, Vector2Int direction, GridManager grid, List<Vector3> pathPoints)

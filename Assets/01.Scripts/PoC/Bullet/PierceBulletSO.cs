@@ -17,7 +17,7 @@ public class PierceBulletSO : BulletLogicSO
             origin,
             new Vector2(direction.x, direction.y),
             Mathf.Max(grid.GridSize.x, grid.GridSize.y) * 2,
-            grid.IsWall,
+            _ => false, // 벽을 완전 무시
             grid.IsInside
         );
 
@@ -30,6 +30,7 @@ public class PierceBulletSO : BulletLogicSO
             {
                 enemy.TakeDamage(Damage * damageMultiplier);
             }
+            // Pierce는 IsWall 검사 및 break 로직이 아예 없음! (완전 관통)
         }
 
         if (result.HitWall)

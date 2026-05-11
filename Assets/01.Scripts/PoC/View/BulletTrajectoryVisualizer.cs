@@ -330,16 +330,8 @@ namespace PocDiceTactics
 
         private Color GetShotColor(int bulletType)
         {
-            switch (bulletType)
-            {
-                case 0: return new Color(1f, 1f, 1f, 1f);
-                case 1: return new Color(1f, 0.5f, 0f, 1f);
-                case 2: return new Color(0f, 1f, 1f, 1f);
-                case 3: return new Color(1f, 0.25f, 0.25f, 1f);
-                case 4: return new Color(0.5f, 0f, 1f, 1f);
-                case 5: return new Color(1f, 1f, 0f, 1f);
-                default: return new Color(1f, 1f, 1f, 1f);
-            }
+            BulletLogicSO bullet = CylinderSystem.Instance?.GetBulletLogic(bulletType);
+            return bullet != null ? bullet.ThemeColor : Color.white;
         }
 
         #endregion

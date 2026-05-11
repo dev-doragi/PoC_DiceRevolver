@@ -245,3 +245,8 @@ public struct StartEnemyTurnEvent { }
 public struct EnemyTurnCompletedEvent { }
 public struct AllEnemiesDefeatedEvent { }
 
+public struct WallDestroyedEvent
+{
+    public Vector2Int Cell;
+}
+

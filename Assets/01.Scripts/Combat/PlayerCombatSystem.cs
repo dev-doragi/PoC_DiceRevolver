@@ -152,6 +152,28 @@ public class PlayerCombatSystem : MonoBehaviour
             return;
         }
 
+        // 영거리 벽 사격 방지
+        BulletLogicSO currentBullet = _cylinderSystem.GetCurrentBulletLogic();
+
+        if (currentBullet == null || !currentBullet.CanIgnoreMuzzleBlock)
+        {
+            var muzzleResult = PathCalculationService.CalculateLaserPath(
+                _playerController.GridPosition,
+                new Vector2(direction.x, direction.y),
+                2, // 짧은 거리로 첫 번째 타일 확인
+                _gridManager.IsWall,
+                _gridManager.IsInside
+            );
+
+            // 인접 칸이 벽이면 PassedTiles는 비고 HitWall만 true가 됨
+            bool isImmediateWallBlock = muzzleResult.HitWall && (muzzleResult.PassedTiles == null || muzzleResult.PassedTiles.Count == 0);
+            if (isImmediateWallBlock)
+            {
+                EventBus.Instance?.Publish(new CylinderDryFiredEvent { ChamberIndex = -1 });
+                return;
+            }
+        }
+
         if (DiceModeManager.Instance != null && DiceModeManager.Instance.CurrentMode == DiceMode.Gatling)
         {
             if (_gatlingRoutine != null)
