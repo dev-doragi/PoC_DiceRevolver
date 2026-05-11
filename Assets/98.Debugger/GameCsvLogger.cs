@@ -47,7 +47,14 @@ public class GameCsvLogger : MonoBehaviour
 
     private void StartWriter()
     {
-        string basePath = Path.Combine(Application.persistentDataPath, _logDirectoryName);
+        string executableDirectory = Path.GetDirectoryName(Application.dataPath);
+        if (string.IsNullOrEmpty(executableDirectory))
+        {
+            Debug.LogError("[GameCsvLogger] Failed to resolve executable directory. Fallback to persistentDataPath.");
+            executableDirectory = Application.persistentDataPath;
+        }
+
+        string basePath = Path.Combine(executableDirectory, _logDirectoryName);
         Directory.CreateDirectory(basePath);
 
         string fileName = $"{_filePrefix}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
