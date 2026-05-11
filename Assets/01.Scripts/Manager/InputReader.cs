@@ -75,13 +75,6 @@ public class InputReader : Singleton<InputReader>, InputSystem_Actions.IPlayerAc
                 _isWaitingForPlayerInputRelease = false;
                 _isPlayerInputArmed = true;
             }
-
-            // InputAction 맵 설정 누락 시에도 ESC 일시정지가 동작하도록 폴백 처리
-            if (!_isInputBlocked && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                Debug.Log("[InputReader] ESC pressed, publishing PausePressedEvent");
-                EventBus.Instance?.Publish(new PausePressedEvent());
-            }
         }
 
         #region IPlayerActions Implementation

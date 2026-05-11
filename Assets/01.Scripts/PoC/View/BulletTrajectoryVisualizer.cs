@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace PocDiceTactics
 {
@@ -11,10 +13,6 @@ namespace PocDiceTactics
     {
         [Header("References")]
         [SerializeField] private GridManager _gridManager;
-        
-        [Header("Trajectory Preview")]
-        [SerializeField] private LineRenderer _ricochetPreviewLine;
-        [SerializeField] private float _previewLineWidth = 0.045f;
         
         [Header("Laser Shot")]
         [SerializeField] private LineRenderer _laserLine;
@@ -32,11 +30,24 @@ namespace PocDiceTactics
         private void Awake()
         {
             TryResolveReferences();
+
+            if (_laserLine == null)
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] _laserLine is Missing! 탄 궤적을 그릴 수 없습니다.");
+                enabled = false;
+            }
         }
 
         private void OnEnable()
         {
             TryResolveReferences();
+
+            if (_laserLine == null)
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] _laserLine is Missing! 탄 궤적을 그릴 수 없습니다.");
+                enabled = false;
+                return;
+            }
             
             if (EventBus.Instance == null)
             {
@@ -44,8 +55,8 @@ namespace PocDiceTactics
                 return;
             }
             
-            EventBus.Instance.Subscribe<RicochetTrajectoryPreviewEvent>(OnRicochetTrajectoryPreview);
             EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
+            EventBus.Instance.Subscribe<EnemyDamagedEvent>(OnEnemyDamaged);
             EventBus.Instance.Subscribe<GameOverEvent>(OnGameOver);
         }
 
@@ -56,8 +67,8 @@ namespace PocDiceTactics
                 return;
             }
             
-            EventBus.Instance.Unsubscribe<RicochetTrajectoryPreviewEvent>(OnRicochetTrajectoryPreview);
             EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
+            EventBus.Instance.Unsubscribe<EnemyDamagedEvent>(OnEnemyDamaged);
             EventBus.Instance.Unsubscribe<GameOverEvent>(OnGameOver);
 
             if (_laserRoutine != null)
@@ -72,165 +83,12 @@ namespace PocDiceTactics
             }
 
             _isLaserRunning = false;
-            HideRicochetPreview();
         }
 
         private void TryResolveReferences()
         {
             if (_gridManager == null) _gridManager = GridManager.Instance;
         }
-
-        #region Ricochet Trajectory Preview
-
-        private void OnRicochetTrajectoryPreview(RicochetTrajectoryPreviewEvent e)
-        {
-            RenderPreciseLaserPreview(e);
-        }
-
-        private void RenderPreciseLaserPreview(RicochetTrajectoryPreviewEvent e)
-        {
-            if (_ricochetPreviewLine == null)
-            {
-                return;
-            }
-
-            if (!e.IsActive)
-            {
-                HideRicochetPreview();
-                return;
-            }
-
-            if (_gridManager == null)
-            {
-                Debug.LogError("[BulletTrajectoryVisualizer] GridManager is null");
-                HideRicochetPreview();
-                return;
-            }
-
-            if (e.Direction == Vector2Int.zero)
-            {
-                Debug.LogError("[BulletTrajectoryVisualizer] direction is zero in RenderPreciseLaserPreview");
-                HideRicochetPreview();
-                return;
-            }
-
-            GridManager.LaserLogicResult logicResult = e.LogicResult;
-            if (logicResult.PassedTiles == null)
-            {
-                logicResult = _gridManager.CalculateLaserLogic(e.Origin, e.Direction);
-            }
-
-            List<Vector3> points = BuildPreciseLaserPoints(_gridManager, e.Origin, e.Direction, logicResult);
-            if (points == null || points.Count < 2)
-            {
-                HideRicochetPreview();
-                return;
-            }
-
-            _ricochetPreviewLine.enabled = true;
-            _ricochetPreviewLine.positionCount = points.Count;
-            for (int i = 0; i < points.Count; i++)
-            {
-                _ricochetPreviewLine.SetPosition(i, points[i]);
-            }
-
-            _ricochetPreviewLine.startWidth = _previewLineWidth;
-            _ricochetPreviewLine.endWidth = _previewLineWidth;
-            Color previewColor = new Color(1f, 0.25f, 0.25f, 0.65f);
-            _ricochetPreviewLine.startColor = previewColor;
-            _ricochetPreviewLine.endColor = previewColor;
-        }
-
-        private List<Vector3> BuildPreciseLaserPoints(GridManager gridManager, Vector2Int origin, Vector2Int direction, GridManager.LaserLogicResult logicResult)
-        {
-            if (gridManager == null)
-            {
-                Debug.LogError("[BulletTrajectoryVisualizer] gridManager is null in BuildPreciseLaserPoints");
-                return null;
-            }
-
-            Vector3 startWorld = gridManager.CellToWorld(origin);
-            Vector3 endWorld = startWorld;
-
-            if (logicResult.HitWall)
-            {
-                if (!TryGetPreciseWallHitPoint(gridManager, startWorld, direction, logicResult.HitWallTile, out endWorld))
-                {
-                    endWorld = gridManager.CellToWorld(logicResult.HitWallTile);
-                }
-            }
-            else if (logicResult.PassedTiles != null && logicResult.PassedTiles.Count > 0)
-            {
-                endWorld = gridManager.CellToWorld(logicResult.PassedTiles[logicResult.PassedTiles.Count - 1]);
-            }
-            else
-            {
-                Vector2Int farTile = origin + direction * Mathf.Max(gridManager.GridSize.x, gridManager.GridSize.y);
-                if (gridManager.IsInside(farTile))
-                {
-                    endWorld = gridManager.CellToWorld(farTile);
-                }
-                else
-                {
-                    endWorld = startWorld + new Vector3(direction.x, direction.y, 0f) * gridManager.CellSize * Mathf.Max(gridManager.GridSize.x, gridManager.GridSize.y);
-                }
-            }
-
-            return new List<Vector3> { startWorld, endWorld };
-        }
-
-        private bool TryGetPreciseWallHitPoint(GridManager gridManager, Vector3 startWorld, Vector2Int direction, Vector2Int wallTile, out Vector3 hitPoint)
-        {
-            hitPoint = Vector3.zero;
-
-            if (gridManager == null)
-            {
-                return false;
-            }
-
-            Vector3 wallCenter = gridManager.CellToWorld(wallTile);
-            float halfCell = gridManager.CellSize * 0.5f;
-
-            Vector3 dirVec = new Vector3(direction.x, direction.y, 0f).normalized;
-
-            if (direction.x != 0)
-            {
-                float hitX = direction.x > 0 ? wallCenter.x - halfCell : wallCenter.x + halfCell;
-                float t = (hitX - startWorld.x) / dirVec.x;
-                float hitY = startWorld.y + dirVec.y * t;
-
-                if (Mathf.Abs(hitY - wallCenter.y) <= halfCell * 1.05f)
-                {
-                    hitPoint = new Vector3(hitX, hitY, 0f);
-                    return true;
-                }
-            }
-
-            if (direction.y != 0)
-            {
-                float hitY = direction.y > 0 ? wallCenter.y - halfCell : wallCenter.y + halfCell;
-                float t = (hitY - startWorld.y) / dirVec.y;
-                float hitX = startWorld.x + dirVec.x * t;
-
-                if (Mathf.Abs(hitX - wallCenter.x) <= halfCell * 1.05f)
-                {
-                    hitPoint = new Vector3(hitX, hitY, 0f);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private void HideRicochetPreview()
-        {
-            if (_ricochetPreviewLine != null)
-            {
-                _ricochetPreviewLine.enabled = false;
-            }
-        }
-
-        #endregion
 
         #region Laser Shot Effect
 
@@ -242,10 +100,20 @@ namespace PocDiceTactics
                 _laserRoutine = null;
             }
 
-            HideRicochetPreview();
             _isLaserRunning = false;
 
             PlayLaserEffect(e);
+        }
+
+        private void OnEnemyDamaged(EnemyDamagedEvent e)
+        {
+            if (_gridManager == null)
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] _gridManager is null");
+                return;
+            }
+
+            PlayEnemyHitPing(_gridManager.CellToWorld(e.EnemyPosition));
         }
 
         private void PlayLaserEffect(ShotFiredEvent e)
@@ -253,6 +121,7 @@ namespace PocDiceTactics
             if (_laserLine == null)
             {
                 _isLaserRunning = false;
+                EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
                 return;
             }
 
@@ -260,12 +129,14 @@ namespace PocDiceTactics
             {
                 Debug.LogError("[BulletTrajectoryVisualizer] _gridManager is null");
                 _isLaserRunning = false;
+                EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
                 return;
             }
 
             if (e.PathPoints == null || e.PathPoints.Count == 0)
             {
                 _isLaserRunning = false;
+                EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
                 return;
             }
 
@@ -365,20 +236,17 @@ namespace PocDiceTactics
             if (worldPathPoints == null || worldPathPoints.Count < 2)
             {
                 _isLaserRunning = false;
+                EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
                 yield break;
             }
 
             _laserLine.enabled = true;
-            _laserLine.positionCount = 2;
-            _laserLine.SetPosition(0, worldPathPoints[0]);
-            _laserLine.SetPosition(1, worldPathPoints[0]);
             _laserLine.startColor = shotColor;
             _laserLine.endColor = shotColor;
             _laserLine.startWidth = _laserMinWidth;
             _laserLine.endWidth = _laserMaxWidth;
 
             int currentSegment = 0;
-            float distanceTraveled = 0f;
 
             while (currentSegment < worldPathPoints.Count - 1)
             {
@@ -401,14 +269,17 @@ namespace PocDiceTactics
                     float t = Mathf.Clamp01(elapsed / travelTime);
                     Vector3 laserTip = Vector3.Lerp(startPoint, endPoint, t);
 
-                    _laserLine.positionCount = 2;
-                    _laserLine.SetPosition(0, worldPathPoints[0]);
-                    _laserLine.SetPosition(1, laserTip);
+                    _laserLine.positionCount = currentSegment + 2;
+                    for (int i = 0; i <= currentSegment; i++)
+                    {
+                        _laserLine.SetPosition(i, worldPathPoints[i]);
+                    }
+                    _laserLine.SetPosition(currentSegment + 1, laserTip);
 
                     yield return null;
                 }
 
-                _laserLine.SetPosition(1, endPoint);
+                _laserLine.SetPosition(currentSegment + 1, endPoint);
                 currentSegment++;
             }
 
@@ -420,6 +291,41 @@ namespace PocDiceTactics
             }
 
             _isLaserRunning = false;
+            EventBus.Instance?.Publish(new OnVisualsCompletedEvent());
+        }
+
+        private void PlayEnemyHitPing(Vector3 worldPos)
+        {
+            if (string.IsNullOrEmpty(_hitParticleKey))
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] _hitParticleKey is null or empty");
+                return;
+            }
+
+            if (PoolManager.Instance == null)
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] PoolManager.Instance is null");
+                return;
+            }
+
+            GameObject particleObj = PoolManager.Instance.Spawn(_hitParticleKey, worldPos, Quaternion.identity);
+            if (particleObj == null)
+            {
+                Debug.LogError("[BulletTrajectoryVisualizer] Failed to spawn hit particle");
+                return;
+            }
+
+            Renderer[] renderers = particleObj.GetComponentsInChildren<Renderer>();
+            foreach (Renderer renderer in renderers)
+            {
+                renderer.sortingOrder = 1000;
+            }
+
+            SortingGroup sortingGroup = particleObj.GetComponent<SortingGroup>();
+            if (sortingGroup != null)
+            {
+                sortingGroup.sortingOrder = 1000;
+            }
         }
 
         private Color GetShotColor(int bulletType)
@@ -454,7 +360,6 @@ namespace PocDiceTactics
             }
 
             _isLaserRunning = false;
-            HideRicochetPreview();
         }
 
         #endregion

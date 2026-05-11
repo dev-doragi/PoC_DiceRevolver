@@ -603,6 +603,7 @@ GameObject:
   m_Component:
   - component: {fileID: 357625839}
   - component: {fileID: 357625838}
+  - component: {fileID: 357625841}
   - component: {fileID: 357625840}
   m_Layer: 0
   m_Name: GridViewManager
@@ -627,18 +628,8 @@ MonoBehaviour:
   _tilePrefab: {fileID: 7807877095474615860, guid: ab39ff27a8d9bf2408bcc894006a6435, type: 3}
   _tileRoot: {fileID: 1172459050}
   _tileOffset: {x: 0, y: 0, z: 0}
-  _shotStepInterval: 0.035
-  _laserLine: {fileID: 357625840}
-  _laserTravelSpeed: 35
-  _laserFadeDuration: 0.12
-  _laserMinWidth: 0.03
-  _laserMaxWidth: 0.1
-  _ricochetPreviewLine: {fileID: 357625840}
-  _instantShotHoldDuration: 0.01
-  _previewLineWidth: 0.045
   _damagePopupPrefab: {fileID: 7508895564446273584, guid: 78285644d84e04349aa5875981242ab4, type: 3}
   _damagePopupCanvasRoot: {fileID: 658477276}
-  _hitParticleKey: Explosion
 --- !u!4 &357625839
 Transform:
   m_ObjectHideFlags: 0
@@ -764,6 +755,25 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!114 &357625841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357625837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 457608d1ece30a24e9ae1646b3fd9d6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocDiceTactics.BulletTrajectoryVisualizer
+  _gridManager: {fileID: 1808568741}
+  _laserLine: {fileID: 357625840}
+  _laserTravelSpeed: 50
+  _laserFadeDuration: 0.12
+  _laserMinWidth: 0.03
+  _laserMaxWidth: 0.1
+  _hitParticleKey: Explosion
 --- !u!1 &419044828
 GameObject:
   m_ObjectHideFlags: 0
@@ -5808,7 +5818,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2061775525139515263, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
       propertyPath: _maxAP
-      value: 100
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 2061775525139515263, guid: 8efc12ce4d8724b42aecbbf3a763b3d4, type: 3}
       propertyPath: _maxHp

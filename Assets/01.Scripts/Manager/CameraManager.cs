@@ -318,7 +318,7 @@ public class CameraManager : Singleton<CameraManager>
         if (InputReader.Instance != null) InputReader.Instance.SetInputBlocked(false);
     }
 
-    public void ShakeWeak() => StartShake(0.18f, 0.08f);
+    public void ShakeWeak() => StartShake(0.08f, 0.04f);
     public void ShakeMedium() => StartShake(0.18f, 0.15f);
     public void ShakeStrong() => StartShake(0.18f, 0.25f);
 

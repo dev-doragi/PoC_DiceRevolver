@@ -165,6 +165,14 @@ public class CylinderSystem : Singleton<CylinderSystem>
                     _blackjackSum = 0;
                 }
 
+                if (CameraManager.Instance == null)
+                {
+                    Debug.LogError("[CylinderSystem] CameraManager.Instance is null");
+                    return false;
+                }
+
+                CameraManager.Instance.ShakeWeak();
+
                 EventBus.Instance?.Publish(new CylinderFiredEvent { ChamberIndex = _firePointer, BulletType = bulletType });
             }
             else

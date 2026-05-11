@@ -74,6 +74,14 @@ public class TurnManager : Singleton<TurnManager>
 
         _waveManager.SpawnNextWave();
 
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("[TurnManager] GameManager.Instance is null");
+            throw new System.InvalidOperationException("[TurnManager] GameManager.Instance is null");
+        }
+
+        GameManager.Instance.ChangeState(GameState.Playing);
+
         SetPhase(TurnPhase.PlayerTurn);
         EventBus.Instance?.Publish(new RoundStartedEvent { RoundIndex = 1 });
     }
