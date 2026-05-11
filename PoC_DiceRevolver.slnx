@@ -1,0 +1,10 @@
+﻿<Solution>
+  <Project Path="BroAudio.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="BroAudioEditor.csproj" />
+  <Project Path="VHierarchy.csproj" />
+  <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="Wingman.csproj" />
+  <Project Path="VInspector.csproj" />
+  <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
+</Solution>

@@ -14,28 +14,32 @@ public abstract class BulletLogicSO : ScriptableObject
         {
             if (grid == null || direction == Vector2Int.zero)
             {
+                Debug.LogError("[BulletLogicSO] grid is null or direction is zero");
                 return null;
             }
 
-            foreach (Vector2Int cell in grid.GetBresenhamLine(origin, direction))
+            var result = PathCalculationService.CalculateLaserPath(
+                origin, 
+                new Vector2(direction.x, direction.y), 
+                Mathf.Max(grid.GridSize.x, grid.GridSize.y) * 2,
+                grid.IsWall,
+                grid.IsInside
+            );
+
+            foreach (Vector2Int cell in result.PassedTiles)
             {
-                if (!grid.IsInside(cell))
-                {
-                    return null;
-                }
-
                 pathPoints?.Add(grid.CellToWorld(cell));
-
-                if (grid.IsWall(cell))
-                {
-                    return null;
-                }
 
                 EnemyController enemy = grid.GetOccupant(cell) as EnemyController;
                 if (enemy != null)
                 {
                     return enemy;
                 }
+            }
+
+            if (result.HitWall)
+            {
+                pathPoints?.Add(grid.CellToWorld(result.HitWallTile));
             }
 
             return null;
